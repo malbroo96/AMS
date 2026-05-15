@@ -1,0 +1,123 @@
+@media screen and (min-width: 768px) and (max-width: 991px) {
+    body {
+        section.header-section {
+            .t-c {
+                text-align: start;
+            }
+
+            .tab-title {
+                font-size: 25px !important;
+            }
+
+            .tab-head {
+                font-size: 16px !important;
+            }
+
+            .r-1 .cc-1 {
+                width: 50%;
+            }
+
+            .r-2 .cc-1 {
+                width: 33%;
+            }
+
+            .r-2 .cc-2 {
+                width: 32%;
+            }
+
+            .r-2 .cc-3 {
+                width: 35%;
+            }
+
+            .middle-content .bn {
+                width: 12rem;
+            }
+
+            .r-3 .i-f {
+                object-fit: fill !important;
+            }
+        }
+
+        section.content-section {
+            .social-scroll {
+                overflow: scroll;
+            }
+
+            .t-c {
+                text-align: start;
+            }
+
+            .affiliation-number {
+                width: 100% !important;
+            }
+
+            .zc {
+                padding: 0 4% !important;
+            }
+
+            .bn-w {
+                width: 50%;
+            }
+
+            .b-n-w-c {
+                width: 50%;
+            }
+
+            .ham-c {
+                position: absolute !important;
+                top: -5rem !important;
+            }
+
+            .b-s {
+                width: 5rem;
+            }
+
+            .bn-c {
+                flex-direction: column;
+            }
+
+            .bn-r {
+                display: flex;
+                flex-direction: row;
+            }
+
+            .f-s {
+                font-size: 15px !important;
+                width: 49%;
+            }
+
+            .b-s {
+                margin-right: 6% !important;
+            }
+
+            .b-e {
+                margin-left: 6% !important;
+            }
+
+            .b-l {
+                width: 88%;
+            }
+
+            .b-w {
+                width: 100%;
+            }
+
+            .ubn-s {
+                width: 66%;
+            }
+
+            .p-s {
+                width: auto !important;
+            }
+
+            .tab-button {
+                width: 50%;
+            }
+
+            .s-b {
+                overflow: scroll;
+                justify-content: start ! IMPORTANT;
+            }
+        }
+    }
+}

@@ -1,0 +1,33 @@
+.custom-height-xsm {
+    height: 2rem;
+}
+
+.custom-height-sm {
+    height: 1.875rem;
+}
+
+.custom-height-md {
+    height: 2.5rem;
+}
+
+.custom-height-lg {
+    height: 3.125rem;
+}
+
+.custom-height-xlg {
+    height: 3.5rem;
+}
+
+.custom-row-height {
+    width: 85%;
+    height: 88vh;
+}
+
+.custom-navbar-top {
+    padding-top: 1rem;
+}
+
+.excel-cell-dimension {
+    max-height: 1rem;
+    max-width: 1rem;
+}

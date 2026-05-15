@@ -1,0 +1,19 @@
+function setSession(key, value) {
+    //sessionStorage.setItem(key, value);
+    localStorage.setItem(key, value);
+}
+
+function getSession(key) {
+    //return sessionStorage.getItem(key);
+    return localStorage.getItem(key);
+}
+
+function removeSession(key) {
+    //return sessionStorage.removeItem(key);
+    return localStorage.removeItem(key);
+}
+
+function clearSession() {
+    //return sessionStorage.clear();
+    return localStorage.clear();
+}

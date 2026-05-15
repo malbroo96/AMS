@@ -1,0 +1,44 @@
+---
+description: Run all shell commands in Git Bash on Windows (Unix-style, visible in terminal)
+alwaysApply: true
+---
+
+# Git Bash for agent shell commands (Windows)
+
+On Windows, run **every** terminal/shell command through **Git Bash**, not raw PowerShell.
+
+Cursor’s runner may still be PowerShell, so **wrap** Git Bash like this:
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" -lc "cd '/c/Users/SumoTech-HP-840-G3/AMS' && YOUR_BASH_COMMANDS"
+```
+
+Inside the `-lc "..."` string, use **only Bash** syntax.
+
+## Rules
+
+- Use **bash**: `&&`, `|`, `export`, `cd`, `npm`, `git`, `ls`, `cat`, etc.
+- Use **Git Bash paths**: `/c/Users/SumoTech-HP-840-G3/AMS/...` inside `-lc`.
+- **Do not** use PowerShell-only syntax inside `-lc`: `Set-Location`, `$env:`, `Get-Content`, etc.
+- `cd` to the repo or subfolder first, then run the command.
+- Prefer commands the user can copy into their own **Git Bash** terminal (same inner string, without the `& ... -lc` wrapper if they are already in bash).
+
+## Examples
+
+```powershell
+# Dev server
+& "C:\Program Files\Git\bin\bash.exe" -lc "cd '/c/Users/SumoTech-HP-840-G3/AMS/frontend' && npm run dev"
+
+# Git status
+& "C:\Program Files\Git\bin\bash.exe" -lc "cd '/c/Users/SumoTech-HP-840-G3/AMS' && git status"
+```
+
+Copy-paste in **your** Git Bash (already in bash):
+
+```bash
+cd /c/Users/SumoTech-HP-840-G3/AMS/frontend && npm run dev
+```
+
+## User learning
+
+When running non-obvious commands, add a short note of what the **bash** part does so the user can learn from the same commands in the integrated terminal (Git Bash profile).

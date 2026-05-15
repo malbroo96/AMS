@@ -1,0 +1,35 @@
+window.showFileInNewTab = function (content, fileName) {
+    var newTab = window.open();
+    var title = "Lycée eGovernance - " + fileName;
+    setTimeout(function () {
+        newTab.document.title = title;
+    }, 500);
+    fetch(content)
+        .then(response => response.blob())
+        .then(blob => {
+            var blobUrl = window.URL.createObjectURL(blob);
+            var iframe = document.createElement('iframe');
+            iframe.src = blobUrl;
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            newTab.document.body.appendChild(iframe);
+        })
+        .catch(error => {
+            newTab.document.write('Error fetching file content.');
+        });
+};
+
+window.showImageInNewTab = function (content, fileName) {
+    var newTab = window.open("");
+    var title = "Lycee eGovernenace" + fileName;
+    var htmlContent = `<html><head><title>${title}</title></head><body><img src="${content}" alt="Image" style="max-height:100vh; max-width:100vw;"/></body></html>`;
+    newTab.document.open();
+    newTab.document.write(htmlContent);
+}
+
+
+window.onscroll = function () {
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+       // DotNet.invokeMethodAsync('KnowledgeLavenirApp', 'OnScrollToEnd');
+    }
+};
