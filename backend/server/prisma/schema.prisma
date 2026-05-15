@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String
+  role      String
+  createdAt DateTime @default(now())
+  student   Student?
+  school    School?  @relation("SchoolAdmin")
+}
+
+model Student {
+  id         String        @id @default(uuid())
+  userId     String        @unique
+  dob        DateTime?
+  gender     String?
+  address    String?
+  parentName String?
+  grade      String?
+  board      String?
+  percentage Float?
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications Application[]
+}
+
+model School {
+  id          String        @id @default(uuid())
+  schoolName  String
+  city        String
+  address     String?
+  board       String?
+  description String?
+  adminId     String?       @unique
+  createdAt   DateTime      @default(now())
+  admin       User?         @relation("SchoolAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+  courses     Course[]
+  applications Application[]
+}
+
+model Course {
+  id           String        @id @default(uuid())
+  schoolId     String
+  courseName   String
+  fees         Float?
+  seats        Int?
+  school       School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  applications Application[]
+}
+
+model Application {
+  id          String            @id @default(uuid())
+  studentId   String
+  schoolId    String
+  courseId    String
+  status      String            @default("pending")
+  remarks     String?
+  submittedAt DateTime          @default(now())
+  student     Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school      School            @relation(fields: [schoolId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  course      Course            @relation(fields: [courseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  documents   Document[]
+}
+
+model Document {
+  id            String      @id @default(uuid())
+  applicationId String
+  documentType  String
+  fileUrl       String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}

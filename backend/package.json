@@ -1,21 +1,30 @@
 {
-  "name": "backend",
+  "name": "admission-portal-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "Admission Portal API",
+  "main": "server/server.js",
   "type": "commonjs",
+  "scripts": {
+    "dev": "node server/server.js",
+    "start": "node server/server.js",
+    "prisma:generate": "prisma generate --schema=server/prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema=server/prisma/schema.prisma",
+    "prisma:push": "prisma db push --schema=server/prisma/schema.prisma",
+    "prisma:seed": "node server/prisma/seed.js"
+  },
   "dependencies": {
+    "@prisma/client": "^6.8.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.3",
-    "mssql": "^12.5.3"
+    "morgan": "^1.10.0",
+    "multer": "^2.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.8.2"
   }
 }
