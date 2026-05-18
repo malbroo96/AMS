@@ -1,30 +1,28 @@
 {
-  "name": "admission-portal-backend",
-  "version": "1.0.0",
-  "description": "Admission Portal API",
-  "main": "server/server.js",
+  "name": "eadmin-admission-portal-api",
+  "version": "2.0.0",
+  "description": "Enterprise E-Admin Admission Portal API (MSSQL)",
+  "main": "server.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "node server/server.js",
-    "start": "node server/server.js",
-    "prisma:generate": "prisma generate --schema=server/prisma/schema.prisma",
-    "prisma:migrate": "prisma migrate dev --schema=server/prisma/schema.prisma",
-    "prisma:push": "prisma db push --schema=server/prisma/schema.prisma",
-    "prisma:seed": "node server/prisma/seed.js"
+    "dev": "node server.js",
+    "start": "node server.js",
+    "db:init": "node database/runSchema.js",
+    "db:seed": "node database/seed.js"
   },
   "dependencies": {
-    "@prisma/client": "^6.8.2",
     "bcrypt": "^6.0.0",
+    "cloudinary": "^2.6.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
-    "multer": "^2.0.0"
-  },
-  "devDependencies": {
-    "prisma": "^6.8.2"
+    "mssql": "^12.5.3",
+    "multer": "^2.0.0",
+    "uuid": "^11.1.0"
   }
 }
