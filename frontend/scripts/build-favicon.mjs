@@ -5,8 +5,8 @@ import path from 'node:path'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const src = path.join(root, "src/assets/Knowledge L'avenir_files/knowledgelavenir1.png")
-const tmp = path.join(root, 'public', '.favicon-tmp.png')
-const publicDir = path.join(root, 'public')
+const assetsDir = path.join(root, 'src', 'assets')
+const tmp = path.join(assetsDir, '.favicon-tmp.png')
 
 function run(args) {
   execSync(`npx --yes sharp-cli ${args}`, { cwd: root, stdio: 'inherit' })
@@ -24,12 +24,12 @@ for (const [size, name] of [
   [192, 'apple-touch-icon.png'],
 ]) {
   run(
-    `resize ${size} ${size} --fit contain --background "#ffffff" --input "${tmp}" --output "${path.join(publicDir, name)}"`,
+    `resize ${size} ${size} --fit contain --background "#ffffff" --input "${tmp}" --output "${path.join(assetsDir, name)}"`,
   )
 }
 
 run(
-  `resize 200 52 --fit inside --background "#ffffff" --input "${tmp}" --output "${path.join(publicDir, 'logo-nav.png')}"`,
+  `resize 200 52 --fit inside --background "#ffffff" --input "${tmp}" --output "${path.join(assetsDir, 'logo-nav.png')}"`,
 )
 
 fs.unlinkSync(tmp)

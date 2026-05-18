@@ -10,20 +10,17 @@ interface NavItem {
 const navByRole: Record<UserRole, NavItem[]> = {
   student: [
     { to: '/dashboard/student', label: 'Dashboard' },
-    { to: '/dashboard/student/profile', label: 'Profile' },
-    { to: '/dashboard/student/apply', label: 'Apply Admission' },
-    { to: '/dashboard/student/applications', label: 'My Applications' },
+    { to: '/dashboard/student?view=colleges', label: 'Colleges' },
   ],
-  school_admin: [
+  college: [
+    { to: '/dashboard/college', label: 'Dashboard' },
+    { to: '/dashboard/college?view=students', label: 'Interested Students' },
+  ],
+  admin: [
     { to: '/dashboard/admin', label: 'Dashboard' },
-    { to: '/dashboard/admin/applications', label: 'Applications' },
-    { to: '/dashboard/admin/status', label: 'Status Management' },
-  ],
-  super_admin: [
-    { to: '/dashboard/superadmin', label: 'Dashboard' },
-    { to: '/dashboard/superadmin/schools', label: 'Manage Schools' },
-    { to: '/dashboard/superadmin/admins', label: 'School Admins' },
-    { to: '/dashboard/superadmin/analytics', label: 'Analytics' },
+    { to: '/dashboard/admin/colleges', label: 'Colleges' },
+    { to: '/dashboard/admin/students', label: 'Students' },
+    { to: '/dashboard/admin/permissions', label: 'Permissions' },
   ],
 };
 
@@ -57,7 +54,7 @@ export function Sidebar({ role, open, onClose }: { role: UserRole; open: boolean
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to.endsWith('/student') || item.to.endsWith('/admin') || item.to.endsWith('/superadmin')}
+              end={item.to.endsWith('/student') || item.to.endsWith('/college') || item.to.endsWith('/admin')}
               onClick={onClose}
               className={({ isActive }) =>
                 `block rounded-xl px-3 py-2.5 text-sm font-medium transition ${

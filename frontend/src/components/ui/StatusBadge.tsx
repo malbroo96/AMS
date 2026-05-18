@@ -5,6 +5,8 @@ const styles: Record<ApplicationStatus, string> = {
   under_review: 'bg-blue-100 text-blue-800',
   approved: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
+  Interested: 'bg-blue-100 text-blue-800',
+  Approved: 'bg-green-100 text-green-800',
 };
 
 const labels: Record<ApplicationStatus, string> = {
@@ -12,6 +14,8 @@ const labels: Record<ApplicationStatus, string> = {
   under_review: 'Under Review',
   approved: 'Approved',
   rejected: 'Rejected',
+  Interested: 'Interested',
+  Approved: 'Approved',
 };
 
 export function StatusBadge({ status }: { status: ApplicationStatus }) {

@@ -4,7 +4,13 @@ import type { User } from '../types';
 export const register = (data: {
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
+  address?: string;
+  mobile?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  education?: string;
+  interestedCollege?: string;
   password: string;
   confirmPassword: string;
   role: string;

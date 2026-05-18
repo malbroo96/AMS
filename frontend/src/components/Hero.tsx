@@ -70,7 +70,7 @@ export function Hero() {
             WELCOME TO
           </p>
           <h2 className="mt-1 bg-linear-to-r from-amber-300 via-amber-500 to-amber-800 bg-clip-text font-sans text-3xl font-extrabold tracking-wide text-transparent sm:text-4xl md:text-5xl lg:text-6xl">
-            KNOWLEDGE L&apos;AVENIR
+            E-ADMIT PORTAL
           </h2>
         </div>
 
@@ -81,10 +81,10 @@ export function Hero() {
             <div className="flex flex-col items-center gap-2 px-2 text-center">
               <LogoMark className="size-14 sm:size-16" variant="light" />
               <p className="font-serif text-[9px] font-semibold tracking-[0.15em] text-white uppercase sm:text-[10px]">
-                Knowledge
+                E-Admit
               </p>
               <p className="font-serif text-[9px] font-semibold tracking-[0.15em] text-white uppercase sm:text-[10px]">
-                L&apos;avenir
+                Portal
               </p>
             </div>
           </DiamondFrame>

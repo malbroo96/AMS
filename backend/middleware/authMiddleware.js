@@ -1,6 +1,6 @@
 const ApiError = require('../utils/ApiError');
 const { verifyToken } = require('../utils/jwt');
-const UserModel = require('../models/User.model');
+const UserModel = require('../models/userStore');
 
 /**
  * Validates JWT and attaches user (without password) to req.user.

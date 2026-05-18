@@ -2,15 +2,23 @@ const Joi = require('joi');
 
 const registerSchema = Joi.object({
   name: Joi.string().min(2).max(100).required(),
-  email: Joi.string().email().required(),
-  phone: Joi.string().min(10).max(15).required(),
+  address: Joi.string().allow('', null),
+  mobile: Joi.string().min(10).max(15),
+  email: Joi.string().email({ tlds: { allow: false } }).required(),
+  phone: Joi.string().min(10).max(15),
+  gender: Joi.string().valid('male', 'female', 'other').allow('', null),
+  dob: Joi.date().iso().allow(null),
+  dateOfBirth: Joi.date().iso().allow(null),
+  education: Joi.string().allow('', null),
+  educationDetails: Joi.string().allow('', null),
+  interestedCollege: Joi.string().allow('', null),
   password: Joi.string().min(6).max(128).required(),
   confirmPassword: Joi.string().valid(Joi.ref('password')).required(),
-  role: Joi.string().valid('student', 'school_admin').required(),
+  role: Joi.string().valid('student').default('student'),
 });
 
 const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
+  email: Joi.string().required(),
   password: Joi.string().required(),
 });
 

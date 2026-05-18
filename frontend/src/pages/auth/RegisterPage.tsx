@@ -9,11 +9,17 @@ import type { UserRole } from '../../types';
 
 interface RegisterForm {
   name: string;
+  address: string;
+  mobile: string;
   email: string;
+  gender: string;
+  dateOfBirth: string;
+  education: string;
+  interestedCollege: string;
   phone: string;
   password: string;
   confirmPassword: string;
-  role: 'student' | 'school_admin';
+  role: 'student';
 }
 
 export function RegisterPage() {
@@ -38,6 +44,7 @@ export function RegisterPage() {
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        ((err as { request?: unknown })?.request ? 'Cannot connect to the server. Please start the backend API and try again.' : '') ||
         'Registration failed';
       showToast(msg, 'error');
     } finally {
@@ -46,7 +53,7 @@ export function RegisterPage() {
   };
 
   return (
-    <AuthLayout title="Register" subtitle="Create your admission portal account">
+    <AuthLayout title="Student Registration" subtitle="Create your student admission account">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Field label="Full Name" error={errors.name?.message}>
           <input
@@ -54,20 +61,34 @@ export function RegisterPage() {
             className={inputClass}
           />
         </Field>
-        <Field label="Email" error={errors.email?.message}>
-          <input type="email" {...register('email', { required: 'Email is required' })} className={inputClass} />
+        <Field label="Address" error={errors.address?.message}>
+          <textarea {...register('address', { required: 'Address is required' })} className={inputClass} rows={3} />
         </Field>
-        <Field label="Phone Number" error={errors.phone?.message}>
+        <Field label="Mobile Number" error={errors.mobile?.message}>
           <input
-            {...register('phone', { required: 'Phone is required', minLength: { value: 10, message: 'Invalid phone' } })}
+            {...register('mobile', { required: 'Mobile number is required', minLength: { value: 10, message: 'Invalid mobile number' } })}
             className={inputClass}
           />
         </Field>
-        <Field label="Role" error={errors.role?.message}>
-          <select {...register('role', { required: true })} className={inputClass}>
-            <option value="student">Student</option>
-            <option value="school_admin">School Admin</option>
+        <Field label="Email" error={errors.email?.message}>
+          <input type="email" {...register('email', { required: 'Email is required' })} className={inputClass} />
+        </Field>
+        <Field label="Gender" error={errors.gender?.message}>
+          <select {...register('gender', { required: 'Gender is required' })} className={inputClass}>
+            <option value="">Select gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
           </select>
+        </Field>
+        <Field label="Date of Birth" error={errors.dateOfBirth?.message}>
+          <input type="date" {...register('dateOfBirth', { required: 'Date of birth is required' })} className={inputClass} />
+        </Field>
+        <Field label="Education Details" error={errors.education?.message}>
+          <textarea {...register('education', { required: 'Education details are required' })} className={inputClass} rows={3} />
+        </Field>
+        <Field label="Interested College" error={errors.interestedCollege?.message}>
+          <input {...register('interestedCollege')} className={inputClass} placeholder="Optional" />
         </Field>
         <Field label="Password" error={errors.password?.message}>
           <div className="relative">

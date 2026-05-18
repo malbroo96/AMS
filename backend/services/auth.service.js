@@ -1,8 +1,10 @@
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const ApiError = require('../utils/ApiError');
+const { localAuth } = require('../config/env');
 const { signToken } = require('../utils/jwt');
 const { mapUser } = require('../utils/mappers');
-const UserModel = require('../models/User.model');
+const UserModel = require('../models/userStore');
+const LocalDb = require('../models/LocalDb');
 const StudentModel = require('../models/Student.model');
 const NotificationModel = require('../models/Notification.model');
 
@@ -14,8 +16,12 @@ const sanitize = (user) => {
 };
 
 const authService = {
-  async register({ name, email, phone, password, role }) {
-    const existing = await UserModel.findByEmail(email);
+  async register(payload) {
+    const { name, email, password } = payload;
+    const role = localAuth ? 'student' : payload.role;
+    const phone = payload.phone || payload.mobile;
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = await UserModel.findByEmail(normalizedEmail);
     if (existing) throw new ApiError('Email already registered', 409);
 
     const hashed = await bcrypt.hash(password, SALT_ROUNDS);
@@ -24,18 +30,40 @@ const authService = {
 
     const user = await UserModel.create({
       name,
-      email,
+      email: normalizedEmail,
       phone,
       password: hashed,
       role,
       isApproved,
     });
 
-    if (role === 'student') {
+    if (!localAuth && role === 'student') {
       await StudentModel.create(user.id);
     }
 
-    if (role === 'school_admin') {
+    if (localAuth) {
+      const db = await LocalDb.read();
+      const student = {
+        id: user.id,
+        userId: user.id,
+        name,
+        address: payload.address || '',
+        mobile: phone || '',
+        email: normalizedEmail,
+        gender: payload.gender || '',
+        dateOfBirth: payload.dateOfBirth || payload.dob || '',
+        education: payload.education || payload.educationDetails || '',
+        interestedCollege: payload.interestedCollege || '',
+        profileVisible: false,
+        createdAt: user.created_at,
+      };
+      db.students.push(student);
+      LocalDb.addActivity(db, `Student registered: ${name}`);
+      await LocalDb.write(db);
+      user.student = student;
+    }
+
+    if (!localAuth && role === 'school_admin') {
       await NotificationModel.create({
         userId: user.id,
         title: 'Account Pending',
@@ -48,7 +76,8 @@ const authService = {
   },
 
   async login({ email, password }) {
-    const user = await UserModel.findByEmail(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await UserModel.findByEmail(normalizedEmail);
     if (!user) throw new ApiError('Invalid email or password', 401);
 
     const match = await bcrypt.compare(password, user.password);
@@ -67,7 +96,17 @@ const authService = {
     if (!user) throw new ApiError('User not found', 404);
 
     let profile = sanitize(user);
-    if (user.role === 'student') {
+    if (localAuth) {
+      const db = await LocalDb.read();
+      if (user.role === 'student') {
+        return { ...profile, student: db.students.find((student) => student.userId === userId) || null };
+      }
+      if (user.role === 'college') {
+        return { ...profile, college: db.colleges.find((college) => college.userId === userId) || null };
+      }
+      return profile;
+    }
+    if (!localAuth && user.role === 'student') {
       const student = await StudentModel.findByUserId(userId);
       profile = { ...profile, student: student ? {
         id: student.id,
@@ -82,7 +121,7 @@ const authService = {
         profileImage: student.profile_image,
       } : null };
     }
-    if (user.role === 'school_admin') {
+    if (!localAuth && user.role === 'school_admin') {
       const SchoolModel = require('../models/School.model');
       const school = await SchoolModel.findByAdminId(userId);
       profile = { ...profile, school: school ? require('../utils/mappers').mapSchool(school) : null };

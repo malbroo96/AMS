@@ -1,5 +1,5 @@
 require('dotenv').config();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { getPool, closePool } = require('../config/database');
 const UserModel = require('../models/User.model');
 const SchoolModel = require('../models/School.model');
@@ -25,7 +25,7 @@ async function seed() {
   const schools = await SchoolModel.list({ limit: 1 });
   if (schools.total === 0) {
     const s1 = await SchoolModel.create({
-      schoolName: "Knowledge L'avenir Academy",
+      schoolName: 'E-Admit Portal Academy',
       city: 'Paris',
       address: '12 Rue de la République',
       board: 'CBSE',

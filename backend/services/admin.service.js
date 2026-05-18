@@ -1,6 +1,6 @@
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const ApiError = require('../utils/ApiError');
-const UserModel = require('../models/User.model');
+const UserModel = require('../models/userStore');
 const SchoolModel = require('../models/School.model');
 const StudentModel = require('../models/Student.model');
 const ApplicationModel = require('../models/Application.model');
@@ -69,13 +69,14 @@ const adminService = {
   },
 
   async createSchoolAdmin({ name, email, phone, password, schoolId }) {
-    const existing = await UserModel.findByEmail(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = await UserModel.findByEmail(normalizedEmail);
     if (existing) throw new ApiError('Email already registered', 409);
 
     const hashed = await bcrypt.hash(password, 12);
     const user = await UserModel.create({
       name,
-      email,
+      email: normalizedEmail,
       phone,
       password: hashed,
       role: 'school_admin',

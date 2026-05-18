@@ -20,18 +20,21 @@ function parseDatabaseUrl() {
 }
 
 const fromUrl = parseDatabaseUrl();
+const dbPassword = process.env.DB_PASSWORD || fromUrl.password || '';
+const localAuth = process.env.USE_LOCAL_AUTH === 'true' || !dbPassword;
 
 module.exports = {
   port: parseInt(process.env.PORT, 10) || 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  localAuth,
 
   db: {
     server: process.env.DB_SERVER || fromUrl.server || 'localhost',
     port: parseInt(process.env.DB_PORT, 10) || fromUrl.port || 1433,
     database: process.env.DB_NAME || fromUrl.database || 'admission_portal',
     user: process.env.DB_USER || fromUrl.user || 'sa',
-    password: process.env.DB_PASSWORD || fromUrl.password || '',
+    password: dbPassword,
     options: {
       encrypt: process.env.DB_ENCRYPT !== 'false',
       trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',

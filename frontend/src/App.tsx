@@ -11,19 +11,11 @@ const RegisterPage = lazy(() => import('./pages/auth/RegisterPage').then((m) => 
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard').then((m) => ({ default: m.StudentDashboard })));
-const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then((m) => ({ default: m.StudentProfile })));
-const ApplyAdmission = lazy(() => import('./pages/student/ApplyAdmission').then((m) => ({ default: m.ApplyAdmission })));
-const MyApplications = lazy(() => import('./pages/student/MyApplications').then((m) => ({ default: m.MyApplications })));
-
+const CollegeDashboard = lazy(() => import('./pages/college/CollegeDashboard').then((m) => ({ default: m.CollegeDashboard })));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
-const AdminApplications = lazy(() => import('./pages/admin/AdminApplications').then((m) => ({ default: m.AdminApplications })));
-const StudentDetailsView = lazy(() => import('./pages/admin/StudentDetailsView').then((m) => ({ default: m.StudentDetailsView })));
-const StatusManagement = lazy(() => import('./pages/admin/StatusManagement').then((m) => ({ default: m.StatusManagement })));
-
-const SuperAdminDashboard = lazy(() => import('./pages/superadmin/SuperAdminDashboard').then((m) => ({ default: m.SuperAdminDashboard })));
-const ManageSchools = lazy(() => import('./pages/superadmin/ManageSchools').then((m) => ({ default: m.ManageSchools })));
-const ManageAdmins = lazy(() => import('./pages/superadmin/ManageAdmins').then((m) => ({ default: m.ManageAdmins })));
-const AnalyticsDashboard = lazy(() => import('./pages/superadmin/AnalyticsDashboard').then((m) => ({ default: m.AnalyticsDashboard })));
+const AdminColleges = lazy(() => import('./pages/admin/AdminColleges').then((m) => ({ default: m.AdminColleges })));
+const AdminStudents = lazy(() => import('./pages/admin/AdminStudents').then((m) => ({ default: m.AdminStudents })));
+const AdminPermissions = lazy(() => import('./pages/admin/AdminPermissions').then((m) => ({ default: m.AdminPermissions })));
 
 function PageLoader() {
   return (
@@ -46,23 +38,17 @@ function App() {
 
               <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                 <Route path="/dashboard/student" element={<StudentDashboard />} />
-                <Route path="/dashboard/student/profile" element={<StudentProfile />} />
-                <Route path="/dashboard/student/apply" element={<ApplyAdmission />} />
-                <Route path="/dashboard/student/applications" element={<MyApplications />} />
               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['school_admin']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['college']} />}>
+                <Route path="/dashboard/college" element={<CollegeDashboard />} />
+              </Route>
+
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                 <Route path="/dashboard/admin" element={<AdminDashboard />} />
-                <Route path="/dashboard/admin/applications" element={<AdminApplications />} />
-                <Route path="/dashboard/admin/applications/:id" element={<StudentDetailsView />} />
-                <Route path="/dashboard/admin/status" element={<StatusManagement />} />
-              </Route>
-
-              <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
-                <Route path="/dashboard/superadmin" element={<SuperAdminDashboard />} />
-                <Route path="/dashboard/superadmin/schools" element={<ManageSchools />} />
-                <Route path="/dashboard/superadmin/admins" element={<ManageAdmins />} />
-                <Route path="/dashboard/superadmin/analytics" element={<AnalyticsDashboard />} />
+                <Route path="/dashboard/admin/colleges" element={<AdminColleges />} />
+                <Route path="/dashboard/admin/students" element={<AdminStudents />} />
+                <Route path="/dashboard/admin/permissions" element={<AdminPermissions />} />
               </Route>
 
               <Route path="/dashboard" element={<Navigate to="/login" replace />} />

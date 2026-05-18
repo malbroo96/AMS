@@ -18,7 +18,7 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
           </svg>
         </button>
         <Link to="/" className="text-sm font-semibold text-blue-700 hover:text-blue-800">
-          Knowledge L&apos;avenir
+          E-Admit Portal
         </Link>
       </div>
       <div className="flex items-center gap-3">

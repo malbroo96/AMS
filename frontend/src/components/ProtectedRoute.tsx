@@ -26,9 +26,9 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     const fallback =
       user.role === 'student'
         ? '/dashboard/student'
-        : user.role === 'school_admin'
-          ? '/dashboard/admin'
-          : '/dashboard/superadmin';
+        : user.role === 'college'
+          ? '/dashboard/college'
+          : '/dashboard/admin';
     return <Navigate to={fallback} replace />;
   }
 

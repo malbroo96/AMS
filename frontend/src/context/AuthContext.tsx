@@ -18,7 +18,13 @@ interface AuthContextValue {
   register: (data: {
     name: string;
     email: string;
-    phone: string;
+    phone?: string;
+    address?: string;
+    mobile?: string;
+    gender?: string;
+    dateOfBirth?: string;
+    education?: string;
+    interestedCollege?: string;
     password: string;
     confirmPassword: string;
     role: string;
@@ -31,8 +37,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const roleRedirect: Record<UserRole, string> = {
   student: '/dashboard/student',
-  school_admin: '/dashboard/admin',
-  super_admin: '/dashboard/superadmin',
+  college: '/dashboard/college',
+  admin: '/dashboard/admin',
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -82,7 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (payload: {
     name: string;
     email: string;
-    phone: string;
+    phone?: string;
+    address?: string;
+    mobile?: string;
+    gender?: string;
+    dateOfBirth?: string;
+    education?: string;
+    interestedCollege?: string;
     password: string;
     confirmPassword: string;
     role: string;

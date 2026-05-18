@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import logoNav from '../assets/logo-nav.png';
 
 
 
@@ -48,9 +49,9 @@ export function Header() {
 
         <img
 
-          src="/logo-nav.png"
+          src={logoNav}
 
-          alt="Knowledge L'avenir"
+          alt="E-Admit Portal"
 
           className="h-11 w-auto max-w-[180px] object-contain object-left sm:h-12"
 
@@ -62,7 +63,7 @@ export function Header() {
 
       <h1 className="truncate font-sans text-sm font-bold tracking-tight text-neutral-900 sm:absolute sm:left-1/2 sm:max-w-none sm:-translate-x-1/2 sm:text-lg lg:text-xl">
 
-        Knowledge L&apos;avenir
+        E-Admit Portal
 
       </h1>
 

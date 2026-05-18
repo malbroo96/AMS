@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import logoNav from '../../assets/logo-nav.png';
 import { LogoMark } from '../LogoMark';
 
 export function AuthLayout({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
@@ -7,8 +8,8 @@ export function AuthLayout({ children, title, subtitle }: { children: ReactNode;
     <div className="min-h-screen bg-slate-50 font-sans">
       <header className="border-b border-neutral-200 bg-white px-4 py-3 sm:px-8">
         <Link to="/" className="flex items-center gap-3">
-          <img src="/logo-nav.png" alt="Knowledge L'avenir" className="h-10 w-auto" />
-          <span className="font-sans text-lg font-bold text-neutral-900">Knowledge L&apos;avenir</span>
+          <img src={logoNav} alt="E-Admit Portal" className="h-10 w-auto" />
+          <span className="font-sans text-lg font-bold text-neutral-900">E-Admit Portal</span>
         </Link>
       </header>
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 lg:flex-row lg:items-start lg:py-16">
@@ -17,7 +18,7 @@ export function AuthLayout({ children, title, subtitle }: { children: ReactNode;
             <div className="hero-diagonal-lines pointer-events-none absolute inset-0" />
             <div className="relative z-10">
               <LogoMark className="mb-6 size-16" variant="light" />
-              <h2 className="font-sans text-3xl font-extrabold text-white">Eadmin Admission Portal</h2>
+              <h2 className="font-sans text-3xl font-extrabold text-white">E-Admit Portal</h2>
               <p className="mt-3 max-w-md text-amber-500/90">
                 Manage admissions seamlessly. Register as a student or school administrator to get started.
               </p>

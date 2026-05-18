@@ -6,6 +6,7 @@ const studentRoutes = require('./student.routes');
 const adminRoutes = require('./admin.routes');
 const notificationRoutes = require('./notification.routes');
 const uploadRoutes = require('./upload.routes');
+const amsRoutes = require('./ams.routes');
 
 const router = express.Router();
 
@@ -17,6 +18,7 @@ router.use('/users', adminRoutes);
 router.use('/analytics', adminRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/upload', uploadRoutes);
+router.use('/ams', amsRoutes);
 
 router.get('/health', (_req, res) => {
   res.json({

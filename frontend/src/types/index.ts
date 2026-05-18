@@ -1,6 +1,6 @@
-export type UserRole = 'student' | 'school_admin' | 'super_admin';
+export type UserRole = 'student' | 'college' | 'admin';
 
-export type ApplicationStatus = 'pending' | 'under_review' | 'approved' | 'rejected';
+export type ApplicationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'Interested' | 'Approved';
 
 export interface User {
   id: string;
@@ -9,63 +9,64 @@ export interface User {
   phone?: string;
   role: UserRole;
   createdAt?: string;
-  student?: Student | null;
-  school?: School | null;
+  student?: StudentProfile | null;
+  college?: College | null;
 }
 
-export interface Student {
+export interface StudentProfile {
   id: string;
   userId: string;
-  dob?: string | null;
-  gender?: string | null;
+  name: string;
   address?: string | null;
+  mobile?: string | null;
+  email: string;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  education?: string | null;
+  interestedCollege?: string | null;
+  profileVisible?: boolean;
   parentName?: string | null;
   grade?: string | null;
   board?: string | null;
   percentage?: number | null;
+  user?: Pick<User, 'id' | 'name' | 'email' | 'phone'>;
 }
 
-export interface School {
+export interface College {
   id: string;
+  collegeName: string;
   schoolName: string;
   city: string;
   address?: string | null;
   board?: string | null;
   description?: string | null;
-  adminId?: string | null;
+  email: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdByAdmin?: string | null;
   createdAt?: string;
-  courses?: Course[];
-  admin?: { id: string; name: string; email: string } | null;
 }
 
-export interface Course {
-  id: string;
-  schoolId: string;
-  courseName: string;
-  fees?: number | null;
-  seats?: number | null;
-}
-
-export interface Document {
-  id: string;
-  applicationId: string;
-  documentType: string;
-  fileUrl: string;
-}
-
-export interface Application {
+export interface Interest {
   id: string;
   studentId: string;
-  schoolId: string;
-  courseId: string;
+  collegeId: string;
   status: ApplicationStatus;
-  remarks?: string | null;
+  approvedByAdmin: boolean;
+  createdAt: string;
   submittedAt: string;
-  school?: School;
+  remarks?: string | null;
+  college?: College;
+  school?: College;
   course?: Course;
   documents?: Document[];
-  student?: Student & { user?: Pick<User, 'id' | 'name' | 'email' | 'phone'> };
+  student?: StudentProfile;
 }
+
+export type School = College;
+export type Student = StudentProfile;
+export type Application = Interest;
+export interface Course { id: string; schoolId: string; courseName: string; fees?: number | null; seats?: number | null; }
+export interface Document { id: string; applicationId: string; documentType: string; fileUrl: string; }
 
 export interface PaginatedResponse<T> {
   data: T;

@@ -4,5 +4,6 @@ node_modules/
 !.env.example
 uploads/
 dist/
+backend/data/*.json
 *.log
 .DS_Store
