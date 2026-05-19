@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import logoNav from '../assets/logo-nav.png';
+import logoNav from '../assets/logo.png';
 
 
 

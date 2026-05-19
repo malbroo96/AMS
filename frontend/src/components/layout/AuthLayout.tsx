@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import logoNav from '../../assets/logo-nav.png';
+import logoNav from '../../assets/logo.png';
 import { LogoMark } from '../LogoMark';
 
 export function AuthLayout({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
@@ -20,7 +20,7 @@ export function AuthLayout({ children, title, subtitle }: { children: ReactNode;
               <LogoMark className="mb-6 size-16" variant="light" />
               <h2 className="font-sans text-3xl font-extrabold text-white">E-Admit Portal</h2>
               <p className="mt-3 max-w-md text-amber-500/90">
-                Manage admissions seamlessly. Register as a student or school administrator to get started.
+                Manage admissions seamlessly. Register as a student to get started.
               </p>
             </div>
           </div>
