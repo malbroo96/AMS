@@ -1,14 +1,13 @@
 const app = require('./app');
 const { localAuth, port } = require('./config/env');
-const { getPool, closePool } = require('./config/database');
+const { connectDB, closePool } = require('./config/database');
 
 async function start() {
   try {
     if (localAuth) {
       console.log('Local auth mode enabled. AMS data will be saved in backend/data/ams-local-db.json');
     } else {
-      await getPool();
-      console.log('MSSQL connected successfully');
+      await connectDB();
     }
 
     app.listen(port, () => {

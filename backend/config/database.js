@@ -13,6 +13,7 @@ const dbConfig = {
   options: {
     ...db.options,
     enableArithAbort: true,
+    instanceName: db.instanceName,
   },
   pool: {
     max: 20,
@@ -33,6 +34,16 @@ async function getPool() {
   return pool;
 }
 
+async function connectDB() {
+  try {
+    await getPool();
+    console.log('AMS DB Connected');
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+}
+
 /**
  * Gracefully close the pool (e.g. on shutdown).
  */
@@ -43,4 +54,4 @@ async function closePool() {
   }
 }
 
-module.exports = { sql, getPool, closePool };
+module.exports = { sql, getPool, connectDB, closePool };
