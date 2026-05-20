@@ -19,9 +19,24 @@ function parseDatabaseUrl() {
   }
 }
 
+function parseDbServer(rawServer) {
+  if (!rawServer) return {};
+  const normalized = rawServer.trim().replace(/\\\\/g, '\\');
+  const [server, ...instanceParts] = normalized.split('\\');
+  return {
+    server: server || normalized,
+    instanceName: instanceParts.length ? instanceParts.join('\\') : undefined,
+  };
+}
+
 const fromUrl = parseDatabaseUrl();
 const dbPassword = process.env.DB_PASSWORD || fromUrl.password || '';
 const localAuth = process.env.USE_LOCAL_AUTH === 'true' || !dbPassword;
+const dbServerValue = process.env.DB_SERVER || fromUrl.server;
+const parsedDbServer = parseDbServer(dbServerValue);
+const dbInstanceName = process.env.DB_INSTANCE || parsedDbServer.instanceName || undefined;
+const rawDbPort = parseInt(process.env.DB_PORT, 10) || fromUrl.port;
+const dbPort = dbInstanceName ? undefined : rawDbPort;
 
 module.exports = {
   port: parseInt(process.env.PORT, 10) || 5000,
@@ -30,12 +45,12 @@ module.exports = {
   localAuth,
 
   db: {
-    server: process.env.DB_SERVER || fromUrl.server || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || fromUrl.port || 1433,
+    server: parsedDbServer.server,
+    port: dbPort,
     database: process.env.DB_NAME || fromUrl.database || 'admission_portal',
     user: process.env.DB_USER || fromUrl.user || 'sa',
     password: dbPassword,
-    instanceName: process.env.DB_INSTANCE || undefined,
+    instanceName: dbInstanceName,
     options: {
       encrypt: process.env.DB_ENCRYPT !== 'false',
       trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',

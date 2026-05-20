@@ -4,16 +4,21 @@ const { db } = require('./env');
 /** MSSQL connection pool — singleton for the application lifecycle */
 let pool = null;
 
-const dbConfig = {
+const dbHost = {
   server: db.server,
-  port: db.port,
+  instanceName: db.instanceName,
+};
+
+const dbConfig = {
+  server: dbHost.server,
   database: db.database,
   user: db.user,
   password: db.password,
   options: {
-    ...db.options,
+    instanceName: dbHost.instanceName,
+    trustServerCertificate: db.options.trustServerCertificate,
+    encrypt: db.options.encrypt,
     enableArithAbort: true,
-    instanceName: db.instanceName,
   },
   pool: {
     max: 20,
@@ -21,6 +26,10 @@ const dbConfig = {
     idleTimeoutMillis: 30000,
   },
 };
+
+if (db.port) {
+  dbConfig.port = db.port;
+}
 
 /**
  * Returns the shared connection pool, creating it on first call.
@@ -36,10 +45,11 @@ async function getPool() {
 
 async function connectDB() {
   try {
+    console.log('DB Host:', dbHost);
     await getPool();
-    console.log('AMS DB Connected');
+    console.log('AMS Database Connected');
   } catch (err) {
-    console.error(err);
+    console.error('Failed to connect to DB:', err.message || err);
     throw err;
   }
 }
