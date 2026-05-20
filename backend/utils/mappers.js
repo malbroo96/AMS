@@ -85,4 +85,46 @@ const mapNotification = (row) => {
   };
 };
 
-module.exports = { mapUser, mapSchool, mapStudent, mapCourse, mapApplication, mapNotification };
+/** AMS SQL rows (dbo.Students) → frontend StudentProfile shape */
+const mapAmsStudentRow = (row) => {
+  if (!row) return null;
+  return {
+    id: String(row.StudentID),
+    userId: String(row.UserID),
+    name: row.Name,
+    address: row.Address ?? '',
+    mobile: row.Mobile ?? '',
+    email: row.Email,
+    gender: row.Gender ?? '',
+    dateOfBirth: row.DateOfBirth,
+    education: row.Education ?? '',
+    interestedCollege: row.InterestedCollege ?? '',
+    profileVisible: !!row.ProfileVisible,
+  };
+};
+
+/** AMS SQL row (dbo.Colleges) → frontend College shape */
+const mapAmsCollegeRow = (row) => {
+  if (!row) return null;
+  return {
+    id: String(row.CollegeID),
+    collegeName: row.CollegeName,
+    schoolName: row.CollegeName,
+    city: '',
+    email: row.Email,
+    status: row.Status,
+    createdByAdmin: row.CreatedByAdminUserID != null ? String(row.CreatedByAdminUserID) : null,
+    createdAt: row.CreatedAt,
+  };
+};
+
+module.exports = {
+  mapUser,
+  mapSchool,
+  mapStudent,
+  mapCourse,
+  mapApplication,
+  mapNotification,
+  mapAmsStudentRow,
+  mapAmsCollegeRow,
+};

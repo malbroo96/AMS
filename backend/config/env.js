@@ -21,18 +21,40 @@ function parseDatabaseUrl() {
 
 const fromUrl = parseDatabaseUrl();
 const dbPassword = process.env.DB_PASSWORD || fromUrl.password || '';
-const localAuth = process.env.USE_LOCAL_AUTH === 'true' || !dbPassword;
+
+/** Split ERPSERVER\SQLEXPRESS into host + instanceName for the mssql driver */
+function parseDbServer() {
+  const raw = (process.env.DB_SERVER || fromUrl.server || 'localhost').trim();
+  const explicitInstance = process.env.DB_INSTANCE?.trim();
+  if (explicitInstance) {
+    return { server: raw, instanceName: explicitInstance };
+  }
+  const sep = raw.includes('\\') ? '\\' : raw.includes('/') ? '/' : null;
+  if (sep) {
+    const idx = raw.indexOf(sep);
+    return { server: raw.slice(0, idx), instanceName: raw.slice(idx + 1) };
+  }
+  return { server: raw, instanceName: null };
+}
+
+const dbHost = parseDbServer();
+/** JSON file storage only when USE_LOCAL_AUTH=true (dev fallback). Default: MSSQL AMS. */
+const localAuth = process.env.USE_LOCAL_AUTH === 'true';
+/** AMS portal + auth via dbo.Users, Colleges, Students, … */
+const useAmsSql = !localAuth;
 
 module.exports = {
   port: parseInt(process.env.PORT, 10) || 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   localAuth,
+  useAmsSql,
 
   db: {
-    server: process.env.DB_SERVER || fromUrl.server || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || fromUrl.port || 1433,
-    database: process.env.DB_NAME || fromUrl.database || 'admission_portal',
+    server: dbHost.server,
+    instanceName: dbHost.instanceName,
+    port: parseInt(process.env.DB_PORT, 10) || fromUrl.port || (dbHost.instanceName ? undefined : 1433),
+    database: process.env.DB_NAME || fromUrl.database || 'AMS',
     user: process.env.DB_USER || fromUrl.user || 'sa',
     password: dbPassword,
     options: {
