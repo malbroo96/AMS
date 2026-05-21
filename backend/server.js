@@ -7,7 +7,7 @@ async function start() {
     if (localAuth) {
       console.warn('USE_LOCAL_AUTH=true — using ams-local-db.json (not for production).');
     } else {
-      if (!db.password) {
+      if (!db.options.trustedConnection && !db.password) {
         console.error('DB_PASSWORD is required. Copy backend/.env.example to backend/.env and configure MSSQL.');
         process.exit(1);
       }

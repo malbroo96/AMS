@@ -27,14 +27,14 @@ function parseDbServer() {
   const raw = (process.env.DB_SERVER || fromUrl.server || 'localhost').trim();
   const explicitInstance = process.env.DB_INSTANCE?.trim();
   if (explicitInstance) {
-    return { server: raw, instanceName: explicitInstance };
+    return { raw, server: raw, instanceName: explicitInstance };
   }
   const sep = raw.includes('\\') ? '\\' : raw.includes('/') ? '/' : null;
   if (sep) {
     const idx = raw.indexOf(sep);
-    return { server: raw.slice(0, idx), instanceName: raw.slice(idx + 1) };
+    return { raw, server: raw.slice(0, idx), instanceName: raw.slice(idx + 1) };
   }
-  return { server: raw, instanceName: null };
+  return { raw, server: raw, instanceName: null };
 }
 
 const dbHost = parseDbServer();
@@ -51,12 +51,14 @@ module.exports = {
   useAmsSql,
 
   db: {
+    rawServer: dbHost.raw,
     server: dbHost.server,
     instanceName: dbHost.instanceName,
     port: parseInt(process.env.DB_PORT, 10) || fromUrl.port || (dbHost.instanceName ? undefined : 1433),
     database: process.env.DB_NAME || fromUrl.database || 'AMS',
     user: process.env.DB_USER || fromUrl.user || 'sa',
     password: dbPassword,
+    odbcDriver: process.env.DB_ODBC_DRIVER || 'SQL Server',
     options: {
       encrypt: process.env.DB_ENCRYPT !== 'false',
       trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
