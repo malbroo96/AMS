@@ -7,8 +7,9 @@ let pool = null;
 const dbConfig = {
   server: db.server,
   database: db.database,
-  user: db.user,
-  password: db.password,
+  ...(db.trustedConnection
+    ? { driver: db.driver || 'msnodesqlv8' }
+    : { user: db.user, password: db.password }),
   options: {
     ...db.options,
     ...(db.port == null && db.instanceName ? { instanceName: db.instanceName } : {}),
