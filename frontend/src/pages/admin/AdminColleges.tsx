@@ -16,8 +16,13 @@ export function AdminColleges() {
     event.preventDefault();
     try {
       const res = await createCollege(form);
+<<<<<<< HEAD
       showToast(`College created. Password: ${res.data.data.temporaryPassword}`, 'success');
       setForm({ collegeName: '', email: '', password: '', status: 'pending' });
+=======
+      showToast(`College registered successfully. Password: ${res.data.data.temporaryPassword}`, 'success');
+      setForm({ collegeName: '', email: '', password: '', status: 'approved' });
+>>>>>>> origin/akhil
       await load();
     } catch (error: unknown) {
       showToast((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to create college', 'error');

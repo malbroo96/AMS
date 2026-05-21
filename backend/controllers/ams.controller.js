@@ -25,6 +25,18 @@ exports.adminStudents = asyncHandler(async (_req, res) => {
   res.json({ success: true, data: await amsService.adminStudents() });
 });
 
+exports.createStudent = asyncHandler(async (req, res) => {
+  res.status(201).json({ success: true, data: await amsService.createStudent(req.body) });
+});
+
+exports.updateStudent = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await amsService.updateStudent(req.params.id, req.body) });
+});
+
+exports.deleteStudent = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await amsService.deleteStudent(req.params.id) });
+});
+
 exports.adminInterests = asyncHandler(async (_req, res) => {
   res.json({ success: true, data: await amsService.adminInterests() });
 });

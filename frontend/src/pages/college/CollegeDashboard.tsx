@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { getCollegeDashboard } from '../../api/ams';
 import { useToast } from '../../context/ToastContext';
+import type { College } from '../../types';
 
 export function CollegeDashboard() {
   const { showToast } = useToast();
-  const [data, setData] = useState<{ stats?: Record<string, number>; students?: Array<Record<string, unknown>> }>({});
+  const [data, setData] = useState<{ college?: College; stats?: Record<string, number>; students?: Array<Record<string, unknown>> }>({});
 
   useEffect(() => {
     getCollegeDashboard()
@@ -20,6 +21,15 @@ export function CollegeDashboard() {
           <p className="text-sm font-semibold uppercase tracking-wide text-green-100">College Portal</p>
           <h1 className="mt-1 text-2xl font-bold">Interested Students</h1>
         </div>
+
+        <section className="rounded-lg border border-green-100 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-900">College Details</h2>
+          <div className="mt-3 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
+            <p><span className="font-semibold">College:</span> {String(data.college?.collegeName || '-')}</p>
+            <p><span className="font-semibold">Email:</span> {String(data.college?.email || '-')}</p>
+            <p><span className="font-semibold">Status:</span> {String(data.college?.status || '-')}</p>
+          </div>
+        </section>
         <div className="grid gap-4 md:grid-cols-3">
           <Stat label="Interested Students" value={data.stats?.interestedStudents || 0} />
           <Stat label="Visible Profiles" value={data.stats?.grantedProfiles || 0} />

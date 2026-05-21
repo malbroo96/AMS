@@ -19,6 +19,24 @@ export const getAdminDashboard = () =>
 export const getAdminStudents = () =>
   api.get<{ success: boolean; data: StudentProfile[] }>('/ams/admin/students');
 
+export const createStudent = (data: {
+  name: string;
+  email: string;
+  mobile?: string;
+  password?: string;
+  address?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  education?: string;
+  interestedCollege?: string;
+}) => api.post('/ams/admin/students', data);
+
+export const updateStudent = (id: string, data: Partial<StudentProfile> & { password?: string }) =>
+  api.put(`/ams/admin/students/${id}`, data);
+
+export const deleteStudent = (id: string) =>
+  api.delete(`/ams/admin/students/${id}`);
+
 export const getAdminInterests = () =>
   api.get<{ success: boolean; data: Interest[] }>('/ams/admin/interests');
 

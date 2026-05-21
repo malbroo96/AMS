@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { getColleges, getStudentDashboard, markCollegeInterest } from '../../api/ams';
-import type { College, Interest } from '../../types';
+import type { College, Interest, StudentProfile } from '../../types';
 import { useToast } from '../../context/ToastContext';
 
 export function StudentDashboard() {
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
+  const [student, setStudent] = useState<StudentProfile | null>(null);
   const [colleges, setColleges] = useState<College[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [stats, setStats] = useState<Record<string, number>>({});
@@ -18,6 +19,7 @@ export function StudentDashboard() {
     setLoading(true);
     const [collegeRes, dashboardRes] = await Promise.all([getColleges({ search }), getStudentDashboard()]);
     setColleges(collegeRes.data.data);
+    setStudent(dashboardRes.data.data.student);
     setInterests(dashboardRes.data.data.interests);
     setStats(dashboardRes.data.data.stats);
     setLoading(false);
@@ -48,6 +50,18 @@ export function StudentDashboard() {
           <p className="text-sm font-semibold uppercase tracking-wide text-blue-100">Student Portal</p>
           <h1 className="mt-1 text-2xl font-bold">Admission Dashboard</h1>
         </div>
+
+        {student && (
+          <section className="rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-900">Profile Details</h2>
+            <div className="mt-3 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
+              <p><span className="font-semibold">Name:</span> {student.name || '-'}</p>
+              <p><span className="font-semibold">Email:</span> {student.email || '-'}</p>
+              <p><span className="font-semibold">Mobile:</span> {student.mobile || '-'}</p>
+              <p><span className="font-semibold">Education:</span> {student.education || '-'}</p>
+            </div>
+          </section>
+        )}
 
         <div className="grid gap-4 md:grid-cols-3">
           <Stat label="Registered Colleges" value={stats.registeredColleges || 0} />
