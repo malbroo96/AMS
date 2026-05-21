@@ -20,7 +20,10 @@ function parseDatabaseUrl() {
 }
 
 const fromUrl = parseDatabaseUrl();
-const dbPassword = process.env.DB_PASSWORD || fromUrl.password || '';
+const dbTrustedConnection = process.env.DB_TRUSTED_CONNECTION === 'true';
+const dbDriver = process.env.DB_DRIVER || (dbTrustedConnection ? 'msnodesqlv8' : undefined);
+const dbUser = dbTrustedConnection ? undefined : process.env.DB_USER || fromUrl.user || 'sa';
+const dbPassword = dbTrustedConnection ? undefined : process.env.DB_PASSWORD || fromUrl.password || '';
 
 /** Split ERPSERVER\SQLEXPRESS into host + instanceName for the mssql driver */
 function parseDbServer() {
@@ -56,13 +59,18 @@ module.exports = {
     instanceName: dbHost.instanceName,
     port: parseInt(process.env.DB_PORT, 10) || fromUrl.port || (dbHost.instanceName ? undefined : 1433),
     database: process.env.DB_NAME || fromUrl.database || 'AMS',
-    user: process.env.DB_USER || fromUrl.user || 'sa',
+    driver: dbDriver,
+    user: dbUser,
     password: dbPassword,
+<<<<<<< HEAD
     odbcDriver: process.env.DB_ODBC_DRIVER || 'SQL Server',
+=======
+    trustedConnection: dbTrustedConnection,
+>>>>>>> 5476f9ce4516e86be9df4646010d1ed05be7365f
     options: {
       encrypt: process.env.DB_ENCRYPT !== 'false',
       trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
-      trustedConnection: process.env.DB_TRUSTED_CONNECTION === 'true',
+      trustedConnection: dbTrustedConnection,
     },
   },
 

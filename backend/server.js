@@ -7,8 +7,13 @@ async function start() {
     if (localAuth) {
       console.warn('USE_LOCAL_AUTH=true — using ams-local-db.json (not for production).');
     } else {
+<<<<<<< HEAD
       if (!db.options.trustedConnection && !db.password) {
         console.error('DB_PASSWORD is required. Copy backend/.env.example to backend/.env and configure MSSQL.');
+=======
+      if (!db.password && !db.trustedConnection) {
+        console.error('DB_PASSWORD is required unless DB_TRUSTED_CONNECTION=true. Copy backend/.env.example to backend/.env and configure MSSQL.');
+>>>>>>> 5476f9ce4516e86be9df4646010d1ed05be7365f
         process.exit(1);
       }
       await getPool();
