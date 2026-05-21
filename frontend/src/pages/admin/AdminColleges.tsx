@@ -16,7 +16,7 @@ export function AdminColleges() {
     event.preventDefault();
     try {
       const res = await createCollege(form);
-      showToast(`College created. Password: ${res.data.data.temporaryPassword}`, 'success');
+      showToast(`College registered successfully. Password: ${res.data.data.temporaryPassword}`, 'success');
       setForm({ collegeName: '', email: '', password: '', status: 'approved' });
       await load();
     } catch (error: unknown) {

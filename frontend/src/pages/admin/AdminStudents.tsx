@@ -44,10 +44,10 @@ export function AdminStudents() {
         const payload = { ...form };
         if (!payload.password) delete (payload as Partial<StudentForm>).password;
         await updateStudent(editingId, payload);
-        showToast('Student updated', 'success');
+        showToast('Student updated successfully', 'success');
       } else {
         const res = await createStudent(form);
-        showToast(`Student created. Password: ${res.data.data.temporaryPassword}`, 'success');
+        showToast(`Student registered successfully. Password: ${res.data.data.temporaryPassword}`, 'success');
       }
       resetForm();
       await load();
