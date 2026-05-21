@@ -1,14 +1,19 @@
 const app = require('./app');
-const { localAuth, port } = require('./config/env');
+const { localAuth, useAmsSql, port, db } = require('./config/env');
 const { getPool, closePool } = require('./config/database');
 
 async function start() {
   try {
     if (localAuth) {
-      console.log('Local auth mode enabled. AMS data will be saved in backend/data/ams-local-db.json');
+      console.warn('USE_LOCAL_AUTH=true — using ams-local-db.json (not for production).');
     } else {
+      if (!db.password) {
+        console.error('DB_PASSWORD is required. Copy backend/.env.example to backend/.env and configure MSSQL.');
+        process.exit(1);
+      }
       await getPool();
-      console.log('MSSQL connected successfully');
+      console.log(`AMS MSSQL mode — database "${db.database}" on ${db.server}`);
+      console.log('All users, students, and colleges are stored in SQL Server.');
     }
 
     app.listen(port, () => {
@@ -22,7 +27,7 @@ async function start() {
 }
 
 process.on('SIGINT', async () => {
-  await closePool();
+  if (!localAuth) await closePool();
   process.exit(0);
 });
 

@@ -6,14 +6,15 @@ let pool = null;
 
 const dbConfig = {
   server: db.server,
-  port: db.port,
   database: db.database,
   user: db.user,
   password: db.password,
   options: {
     ...db.options,
+    ...(db.port == null && db.instanceName ? { instanceName: db.instanceName } : {}),
     enableArithAbort: true,
   },
+  ...(db.port != null && !Number.isNaN(db.port) ? { port: db.port } : {}),
   pool: {
     max: 20,
     min: 2,

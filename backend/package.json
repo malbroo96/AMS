@@ -8,7 +8,10 @@
     "dev": "node server.js",
     "start": "node server.js",
     "db:init": "node database/runSchema.js",
-    "db:seed": "node database/seed.js"
+    "db:seed": "node database/seed.js",
+    "db:ams-schema": "node database/printAmsSchemaHint.js",
+    "db:ams-seed-admin": "node database/amsSeedAdmin.js",
+    "db:migrate-json": "node database/migrateJsonToAms.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
