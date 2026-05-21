@@ -5,12 +5,16 @@ const { db } = require('./env');
 let pool = null;
 
 const dbConfig = {
-  server: db.server,
-  database: db.database,
+  server: process.env.DB_SERVER || db.server,
+  port: parseInt(process.env.DB_PORT, 10) || db.port,
+  database: process.env.DB_NAME || db.database,
   ...(db.trustedConnection
     ? { driver: db.driver || 'msnodesqlv8' }
-    : { user: db.user, password: db.password }),
+    : { user: process.env.DB_USER || db.user, password: process.env.DB_PASSWORD || db.password }),
   options: {
+    trustServerCertificate: true,
+    encrypt: false,
+    trustedConnection: db.trustedConnection,
     ...db.options,
     ...(db.port == null && db.instanceName ? { instanceName: db.instanceName } : {}),
     enableArithAbort: true,
