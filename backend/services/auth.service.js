@@ -48,6 +48,7 @@ const authService = {
         const d = new Date(payload.dateOfBirth || payload.dob);
         if (!Number.isNaN(d.getTime())) dobVal = d;
       }
+      const interestedCollegeId = parseInt(String(payload.interestedCollege || ''), 10);
       await pool
         .request()
         .input('userId', sql.Int, user.id)
@@ -58,7 +59,7 @@ const authService = {
         .input('gender', sql.NVarChar(20), payload.gender || '')
         .input('dob', sql.Date, dobVal)
         .input('education', sql.NVarChar(150), payload.education || payload.educationDetails || '')
-        .input('ic', sql.NVarChar(200), payload.interestedCollege || '')
+        .input('ic', sql.Int, Number.isFinite(interestedCollegeId) ? interestedCollegeId : null)
         .query(`
           INSERT INTO Students (UserID, Name, Address, Mobile, Email, Gender, DateOfBirth, Education, InterestedCollege, ProfileVisible)
           VALUES (@userId, @name, @address, @mobile, @email, @gender, @dob, @education, @ic, 0)

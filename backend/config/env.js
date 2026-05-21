@@ -62,11 +62,8 @@ module.exports = {
     driver: dbDriver,
     user: dbUser,
     password: dbPassword,
-<<<<<<< HEAD
     odbcDriver: process.env.DB_ODBC_DRIVER || 'SQL Server',
-=======
     trustedConnection: dbTrustedConnection,
->>>>>>> 5476f9ce4516e86be9df4646010d1ed05be7365f
     options: {
       encrypt: process.env.DB_ENCRYPT !== 'false',
       trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
