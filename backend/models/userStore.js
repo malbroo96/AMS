@@ -1,3 +1,9 @@
-const { localAuth } = require('../config/env');
+const { localAuth, useAmsSql } = require('../config/env');
 
-module.exports = localAuth ? require('./LocalUser.model') : require('./User.model');
+if (localAuth) {
+  module.exports = require('./LocalUser.model');
+} else if (useAmsSql) {
+  module.exports = require('./AmsUser.model');
+} else {
+  module.exports = require('./User.model');
+}
