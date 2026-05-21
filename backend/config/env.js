@@ -60,6 +60,7 @@ module.exports = {
     options: {
       encrypt: process.env.DB_ENCRYPT !== 'false',
       trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
+      trustedConnection: process.env.DB_TRUSTED_CONNECTION === 'true',
     },
   },
 
