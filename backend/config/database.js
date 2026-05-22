@@ -9,12 +9,25 @@ const dbConfig = {
   database: db.database,
   user: db.user,
   password: db.password,
+
   options: {
     ...db.options,
-    ...(db.port == null && db.instanceName ? { instanceName: db.instanceName } : {}),
+
+    ...(db.port == null && db.instanceName
+      ? { instanceName: db.instanceName }
+      : {}),
+
     enableArithAbort: true,
+
+    // Fix SSL/OpenSSL issue
+    encrypt: false,
+    trustServerCertificate: true,
   },
-  ...(db.port != null && !Number.isNaN(db.port) ? { port: db.port } : {}),
+
+  ...(db.port != null && !Number.isNaN(db.port)
+    ? { port: db.port }
+    : {}),
+
   pool: {
     max: 20,
     min: 2,
@@ -27,10 +40,13 @@ const dbConfig = {
  */
 async function getPool() {
   if (pool) return pool;
+
   pool = await sql.connect(dbConfig);
+
   pool.on('error', (err) => {
     console.error('MSSQL pool error:', err.message);
   });
+
   return pool;
 }
 
