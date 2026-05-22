@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { LogoMark } from '../LogoMark';
 import type { UserRole } from '../../types';
+import './Sidebar.css';
 
 interface NavItem {
   to: string;
@@ -24,6 +25,12 @@ const navByRole: Record<UserRole, NavItem[]> = {
   ],
 };
 
+const rolePortalLabel: Record<UserRole, string> = {
+  student: 'Student Portal',
+  college: 'College Portal',
+  admin: 'Admin Portal',
+};
+
 export function Sidebar({ role, open, onClose }: { role: UserRole; open: boolean; onClose: () => void }) {
   const items = navByRole[role];
 
@@ -32,24 +39,24 @@ export function Sidebar({ role, open, onClose }: { role: UserRole; open: boolean
       {open && (
         <button
           type="button"
-          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          className="sidebar-overlay fixed inset-0 z-30 lg:hidden"
           onClick={onClose}
           aria-label="Close menu"
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-blue-900 text-white shadow-md transition-transform lg:static lg:translate-x-0 ${
+        className={`sidebar fixed inset-y-0 left-0 z-40 flex w-64 flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center gap-3 border-b border-blue-800 px-4 py-5">
+        <div className="sidebar__brand flex items-center gap-3">
           <LogoMark className="size-10" variant="light" />
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-200">Eadmin Portal</p>
-            <p className="text-sm font-bold">Admission System</p>
+            <p className="sidebar__brand-label">Eadmin Portal</p>
+            <p className="sidebar__brand-title">{rolePortalLabel[role]}</p>
           </div>
         </div>
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="sidebar__nav">
           {items.map((item) => (
             <NavLink
               key={item.to}
@@ -57,9 +64,7 @@ export function Sidebar({ role, open, onClose }: { role: UserRole; open: boolean
               end={item.to.endsWith('/student') || item.to.endsWith('/college') || item.to.endsWith('/admin')}
               onClick={onClose}
               className={({ isActive }) =>
-                `block rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                  isActive ? 'bg-blue-700 text-white' : 'text-blue-100 hover:bg-blue-800'
-                }`
+                `sidebar__link${isActive ? ' sidebar__link--active' : ''}`
               }
             >
               {item.label}

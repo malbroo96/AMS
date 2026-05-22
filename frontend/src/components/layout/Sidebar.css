@@ -1,0 +1,68 @@
+/* Sidebar — enterprise grey theme (matches dashboard slate-800 cards) */
+
+.sidebar {
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar__brand {
+  border-bottom: 1px solid var(--sidebar-border);
+  padding: 1.25rem 1rem;
+}
+
+.sidebar__brand-label {
+  color: var(--sidebar-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sidebar__brand-title {
+  color: var(--sidebar-text);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.sidebar__nav {
+  flex: 1;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar__link {
+  display: block;
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sidebar-text-muted);
+  text-decoration: none;
+  transition:
+    background-color var(--sidebar-transition),
+    color var(--sidebar-transition),
+    transform var(--sidebar-transition);
+}
+
+.sidebar__link:hover {
+  background-color: var(--sidebar-hover);
+  color: var(--sidebar-text);
+}
+
+.sidebar__link--active {
+  background-color: var(--sidebar-active);
+  color: var(--sidebar-text);
+  font-weight: 600;
+}
+
+.sidebar__link--active:hover {
+  background-color: var(--sidebar-active);
+  color: var(--sidebar-text);
+}
+
+.sidebar-overlay {
+  background-color: rgba(0, 0, 0, 0.4);
+}
