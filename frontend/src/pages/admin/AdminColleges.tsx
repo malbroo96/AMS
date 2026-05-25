@@ -7,7 +7,7 @@ import { useToast } from '../../context/ToastContext';
 export function AdminColleges() {
   const { showToast } = useToast();
   const [colleges, setColleges] = useState<College[]>([]);
-  const [form, setForm] = useState({ collegeName: '', email: '', password: '', status: 'approved' });
+  const [form, setForm] = useState({ collegeName: '', email: '', password: '', status: 'pending' });
 
   const load = () => getColleges({ status: 'all' }).then((res) => setColleges(res.data.data));
   useEffect(() => { load(); }, []);
@@ -16,8 +16,8 @@ export function AdminColleges() {
     event.preventDefault();
     try {
       const res = await createCollege(form);
-      showToast(`College registered successfully. Password: ${res.data.data.temporaryPassword}`, 'success');
-      setForm({ collegeName: '', email: '', password: '', status: 'approved' });
+      showToast(`College created. Password: ${res.data.data.temporaryPassword}`, 'success');
+      setForm({ collegeName: '', email: '', password: '', status: 'pending' });
       await load();
     } catch (error: unknown) {
       showToast((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to create college', 'error');
