@@ -1,24 +1,30 @@
 const { db } = require('./env');
-const useTrustedConnection = db.options.trustedConnection === true;
+const useTrustedConnection = db.trustedConnection === true;
 const sql = useTrustedConnection ? require('mssql/msnodesqlv8') : require('mssql');
 
-/** MSSQL connection pool — singleton for the application lifecycle */
+/** MSSQL connection pool - singleton for the application lifecycle */
 let pool = null;
 const dbConfig = {
   server: db.server,
   database: db.database,
-  user: db.user,
-  password: db.password,
-
   options: {
     enableArithAbort: true,
-    encrypt: false,
-    trustServerCertificate: true,
+    encrypt: db.options.encrypt,
+    trustServerCertificate: db.options.trustServerCertificate,
+    ...(db.instanceName ? { instanceName: db.instanceName } : {}),
+    ...(useTrustedConnection ? { trustedConnection: true } : {}),
   },
 
   ...(db.port != null && !Number.isNaN(db.port)
     ? { port: db.port }
     : {}),
+
+  ...(useTrustedConnection
+    ? { driver: db.odbcDriver }
+    : {
+        user: db.user,
+        password: db.password,
+      }),
 
   pool: {
     max: 20,
