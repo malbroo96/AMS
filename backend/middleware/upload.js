@@ -32,4 +32,19 @@ const uploadMiddleware = multer({
   limits: { fileSize: upload.maxFileSizeMb * 1024 * 1024 },
 });
 
-module.exports = { uploadMiddleware, uploadsPath };
+const collegeAssetAllowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+
+const collegeAssetFileFilter = (_req, file, cb) => {
+  if (!collegeAssetAllowedMimes.includes(file.mimetype)) {
+    return cb(new ApiError('Only PNG, JPEG, and WebP images are allowed', 400));
+  }
+  cb(null, true);
+};
+
+const collegeAssetUploadMiddleware = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: collegeAssetFileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+module.exports = { uploadMiddleware, uploadsPath, collegeAssetUploadMiddleware };

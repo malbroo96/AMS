@@ -13,6 +13,34 @@ export const markCollegeInterest = (collegeId: string) =>
 export const getCollegeDashboard = () =>
   api.get<{ success: boolean; data: { college: College; stats: Record<string, number>; students: Array<Record<string, unknown>> } }>('/ams/college/dashboard');
 
+export interface CollegeAssets {
+  collegeId: string;
+  collegeName: string;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  updatedOn: string | null;
+}
+
+export const getCollegeAssets = (collegeId: string) =>
+  api.get<{ success: boolean; data: CollegeAssets }>(`/college/assets/${collegeId}`);
+
+export const uploadCollegeLogo = (file: File, collegeId?: string) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (collegeId) formData.append('collegeId', collegeId);
+  return api.post('/college/upload-logo', formData);
+};
+
+export const uploadCollegeBanner = (file: File, collegeId?: string) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (collegeId) formData.append('collegeId', collegeId);
+  return api.post('/college/upload-banner', formData);
+};
+
+export const deleteCollegeLogo = (collegeId: string) =>
+  api.delete(`/college/delete-logo/${collegeId}`);
+
 export const getAdminDashboard = () =>
   api.get<{ success: boolean; data: Record<string, unknown> }>('/ams/admin/dashboard');
 

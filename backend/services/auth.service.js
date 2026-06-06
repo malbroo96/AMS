@@ -23,7 +23,8 @@ const sanitize = (user) => {
 const authService = {
   async register(payload) {
     const { name, email, password } = payload;
-    const role = useAmsSql || localAuth ? 'student' : payload.role;
+    const requestedRole = payload.role || 'student';
+    const role = useAmsSql || localAuth ? requestedRole : payload.role;
     const phone = payload.phone || payload.mobile;
     const normalizedEmail = email.trim().toLowerCase();
     const existing = await UserModel.findByEmail(normalizedEmail);
@@ -69,26 +70,58 @@ const authService = {
       await AmsActivity.add(`Student registered: ${name}`);
     }
 
+    if (useAmsSql && role === 'college') {
+      const pool = await getPool();
+      const collegeName = payload.collegeName || name;
+      await pool
+        .request()
+        .input('collegeName', sql.VarChar(150), collegeName)
+        .input('email', sql.VarChar(255), normalizedEmail)
+        .input('userId', sql.Int, user.id)
+        .input('status', sql.VarChar(20), 'pending')
+        .query(`
+          INSERT INTO Colleges (CollegeName, Email, UserID, Status)
+          VALUES (@collegeName, @email, @userId, @status)
+        `);
+      const college = await pool.request().input('uid', sql.Int, user.id).query('SELECT * FROM Colleges WHERE UserID = @uid');
+      user.college = mapAmsCollegeRow(college.recordset[0]);
+      await AmsActivity.add(`College registered: ${collegeName}`);
+    }
+
     if (localAuth) {
       const ldb = await LocalDb.read();
-      const student = {
-        id: user.id,
-        userId: user.id,
-        name,
-        address: payload.address || '',
-        mobile: phone || '',
-        email: normalizedEmail,
-        gender: payload.gender || '',
-        dateOfBirth: payload.dateOfBirth || payload.dob || '',
-        education: payload.education || payload.educationDetails || '',
-        interestedCollege: payload.interestedCollege || '',
-        profileVisible: false,
-        createdAt: user.created_at,
-      };
-      ldb.students.push(student);
-      LocalDb.addActivity(ldb, `Student registered: ${name}`);
+      if (role === 'college') {
+        const college = {
+          id: user.id,
+          userId: user.id,
+          collegeName: payload.collegeName || name,
+          email: normalizedEmail,
+          status: 'pending',
+          createdAt: user.created_at,
+        };
+        ldb.colleges.push(college);
+        user.college = college;
+        LocalDb.addActivity(ldb, `College registered: ${college.collegeName}`);
+      } else {
+        const student = {
+          id: user.id,
+          userId: user.id,
+          name,
+          address: payload.address || '',
+          mobile: phone || '',
+          email: normalizedEmail,
+          gender: payload.gender || '',
+          dateOfBirth: payload.dateOfBirth || payload.dob || '',
+          education: payload.education || payload.educationDetails || '',
+          interestedCollege: payload.interestedCollege || '',
+          profileVisible: false,
+          createdAt: user.created_at,
+        };
+        ldb.students.push(student);
+        user.student = student;
+        LocalDb.addActivity(ldb, `Student registered: ${name}`);
+      }
       await LocalDb.write(ldb);
-      user.student = student;
     }
 
     if (!useAmsSql && !localAuth && role === 'student') {

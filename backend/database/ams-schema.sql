@@ -106,4 +106,17 @@ BEGIN
 END
 GO
 
-PRINT 'AMS tables ready (Roles, Users, Colleges, Students, StudentApplications, ActivityLogs).';
+IF OBJECT_ID('dbo.CollegeAssets', 'U') IS NULL
+BEGIN
+  CREATE TABLE dbo.CollegeAssets (
+    CollegeId INT NOT NULL PRIMARY KEY,
+    LogoUrl NVARCHAR(1000) NULL,
+    BannerUrl NVARCHAR(1000) NULL,
+    UpdatedOn DATETIME2 NOT NULL CONSTRAINT DF_CollegeAssets_UpdatedOn DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_CollegeAssets_Colleges FOREIGN KEY (CollegeId)
+      REFERENCES dbo.Colleges(CollegeID) ON DELETE CASCADE
+  );
+END
+GO
+
+PRINT 'AMS tables ready (Roles, Users, Colleges, Students, StudentApplications, ActivityLogs, CollegeAssets).';

@@ -2,6 +2,7 @@ const Joi = require('joi');
 
 const registerSchema = Joi.object({
   name: Joi.string().min(2).max(100).required(),
+  collegeName: Joi.string().min(2).max(150),
   address: Joi.string().allow('', null),
   mobile: Joi.string().min(10).max(15),
   email: Joi.string().email({ tlds: { allow: false } }).required(),
@@ -14,7 +15,7 @@ const registerSchema = Joi.object({
   interestedCollege: Joi.string().allow('', null),
   password: Joi.string().min(6).max(128).required(),
   confirmPassword: Joi.string().valid(Joi.ref('password')).required(),
-  role: Joi.string().valid('student').default('student'),
+  role: Joi.string().valid('student', 'college').default('student'),
 });
 
 const loginSchema = Joi.object({

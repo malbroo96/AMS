@@ -3,6 +3,7 @@ import type { User } from '../types';
 
 export const register = (data: {
   name: string;
+  collegeName?: string;
   email: string;
   phone?: string;
   address?: string;
