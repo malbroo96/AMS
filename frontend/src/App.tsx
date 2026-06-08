@@ -12,6 +12,7 @@ const CollegeRegisterPage = lazy(() => import('./pages/auth/CollegeRegisterPage'
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard').then((m) => ({ default: m.StudentDashboard })));
+const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then((m) => ({ default: m.StudentProfile })));
 const CollegeDashboard = lazy(() => import('./pages/college/CollegeDashboard').then((m) => ({ default: m.CollegeDashboard })));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 const AdminColleges = lazy(() => import('./pages/admin/AdminColleges').then((m) => ({ default: m.AdminColleges })));
@@ -40,6 +41,7 @@ function App() {
 
               <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                 <Route path="/dashboard/student" element={<StudentDashboard />} />
+                <Route path="/dashboard/student/profile" element={<StudentProfile />} />
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={['college']} />}>
