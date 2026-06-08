@@ -12,6 +12,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
   student: [
     { to: '/dashboard/student', label: 'Dashboard' },
     { to: '/dashboard/student?view=colleges', label: 'Colleges' },
+    { to: '/dashboard/student/profile', label: 'Profile' },
   ],
   college: [
     { to: '/dashboard/college', label: 'Dashboard' },
