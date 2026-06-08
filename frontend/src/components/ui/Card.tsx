@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { shell } from './designTokens';
 
 interface CardProps {
   children: ReactNode;
@@ -16,7 +17,7 @@ const paddingClass = {
 
 export function Card({ children, className = '', hover = true, padding = 'md' }: CardProps) {
   return (
-    <div className={`${hover ? 'card' : 'card-flat'} ${paddingClass[padding]} ${className}`}>
+    <div className={`${shell.card} ${hover ? 'transition hover:-translate-y-0.5 hover:shadow-md' : ''} ${paddingClass[padding]} ${className}`}>
       {children}
     </div>
   );

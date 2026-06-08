@@ -3,6 +3,7 @@ import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { createStudent, deleteStudent, getAdminStudents, getColleges, updateStudent } from '../../api/ams';
 import type { College, StudentProfile } from '../../types';
 import { useToast } from '../../context/ToastContext';
+import { button, form as formToken, shell, table } from '../../components/ui/designTokens';
 
 const emptyForm = {
   name: '',
@@ -81,11 +82,11 @@ export function AdminStudents() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="rounded-lg bg-slate-800 p-6 text-white">
-          <h1 className="text-2xl font-bold">All Students</h1>
+        <div className={shell.pageHero}>
+          <h1 className="text-2xl font-bold text-slate-900">All Students</h1>
         </div>
 
-        <form onSubmit={submit} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-4">
+        <form onSubmit={submit} className={`grid gap-3 p-5 md:grid-cols-4 ${shell.card}`}>
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="Student name" className={inputClass} />
           <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required placeholder="Email" className={inputClass} />
           <input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} placeholder="Mobile" className={inputClass} />
@@ -108,20 +109,20 @@ export function AdminStudents() {
           </select>
           <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Address" className={`${inputClass} md:col-span-2`} />
           <div className="flex gap-2 md:col-span-2">
-            <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white">
+            <button className={button.primary}>
               {editingId ? 'Update Student' : 'Create Student'}
             </button>
             {editingId && (
-              <button type="button" onClick={resetForm} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
+              <button type="button" onClick={resetForm} className={button.secondary}>
                 Cancel
               </button>
             )}
           </div>
         </form>
 
-        <section className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <section className={`p-5 ${table.shell}`}>
           <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="bg-slate-100">
+            <thead className={table.head}>
               <tr>
                 <th className="p-3">Name</th>
                 <th className="p-3">Email</th>
@@ -134,7 +135,7 @@ export function AdminStudents() {
             </thead>
             <tbody>
               {students.map((student) => (
-                <tr key={student.id} className="border-t">
+                <tr key={student.id} className={table.row}>
                   <td className="p-3 font-medium">{student.name}</td>
                   <td className="p-3">{student.email}</td>
                   <td className="p-3">{student.mobile}</td>
@@ -161,4 +162,4 @@ export function AdminStudents() {
   );
 }
 
-const inputClass = 'rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-500';
+const inputClass = formToken.input;
