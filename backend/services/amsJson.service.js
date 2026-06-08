@@ -93,6 +93,42 @@ const amsJsonService = {
     };
   },
 
+  async getCollegeProfile(user) {
+    const db = await LocalDb.read();
+    const college = db.colleges.find((item) => item.userId === user.id);
+    if (!college) throw new ApiError('College profile not found', 404);
+    const interests = db.interests.filter((interest) => interest.collegeId === college.id);
+    return {
+      id: college.id,
+      collegeName: college.collegeName || '',
+      email: college.email || '',
+      status: college.status || '',
+      logoUrl: null,
+      coverBannerUrl: null,
+      courses: [],
+      achievements: [],
+      location: { country: '', state: '', city: '', pincode: '', fullAddress: '' },
+      contact: { emailAddress: college.email || '', admissionMobileNumber: '', officeMobileNumber: '', websiteUrl: '' },
+      placements: { placementPercentage: null, highestPackage: '', averagePackage: '' },
+      about: { summaryDescription: '', visionStatement: '', missionStatement: '', principalMessage: '' },
+      dashboard: {
+        totalStudentViews: 0,
+        totalEnquiries: 0,
+        totalInterestedStudents: interests.length,
+        profileCompletionPercentage: college.collegeName ? 40 : 0,
+      },
+    };
+  },
+
+  async updateCollegeProfile(user, data = {}) {
+    const db = await LocalDb.read();
+    const college = db.colleges.find((item) => item.userId === user.id);
+    if (!college) throw new ApiError('College profile not found', 404);
+    if (data.collegeName) college.collegeName = data.collegeName;
+    await LocalDb.write(db);
+    return this.getCollegeProfile(user);
+  },
+
   async getCollegeDashboard(user) {
     const db = await LocalDb.read();
     const college = db.colleges.find((item) => item.userId === user.id);

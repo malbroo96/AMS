@@ -11,6 +11,8 @@ router.get('/student/dashboard', authMiddleware, roleMiddleware('student'), amsC
 router.post('/student/interests', authMiddleware, roleMiddleware('student'), amsController.markInterest);
 
 router.get('/college/dashboard', authMiddleware, roleMiddleware('college'), amsController.collegeDashboard);
+router.get('/college/profile', authMiddleware, roleMiddleware('college'), amsController.collegeProfile);
+router.put('/college/profile', authMiddleware, roleMiddleware('college'), amsController.updateCollegeProfile);
 
 router.get('/admin/dashboard', authMiddleware, roleMiddleware('admin'), amsController.adminDashboard);
 router.get('/admin/students', authMiddleware, roleMiddleware('admin'), amsController.adminStudents);

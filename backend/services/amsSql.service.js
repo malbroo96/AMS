@@ -4,6 +4,75 @@ const ApiError = require('../utils/ApiError');
 const UserModel = require('../models/userStore');
 const { mapAmsStudentRow, mapAmsCollegeRow } = require('../utils/mappers');
 const AmsActivity = require('../models/AmsActivity.model');
+const CollegeAssetModel = require('../models/CollegeAsset.model');
+
+function buildCollegeProfilePayload(college, assets, stats = {}) {
+  const logoUrl = assets?.logoUrl || null;
+  const coverBannerUrl = assets?.bannerUrl || null;
+  const profile = {
+    id: college.id,
+    collegeName: college.collegeName || '',
+    shortName: '',
+    establishmentYear: null,
+    collegeType: '',
+    universityAffiliation: '',
+    naacGrade: '',
+    aicteApproval: false,
+    ugcRecognition: false,
+    email: college.email || '',
+    status: college.status || '',
+    logoUrl,
+    coverBannerUrl,
+    prospectusUrl: null,
+    location: {
+      country: '',
+      state: '',
+      city: college.city || '',
+      pincode: '',
+      fullAddress: '',
+    },
+    contact: {
+      emailAddress: college.email || '',
+      admissionMobileNumber: '',
+      officeMobileNumber: '',
+      websiteUrl: '',
+    },
+    placements: {
+      placementPercentage: null,
+      highestPackage: '',
+      averagePackage: '',
+      topRecruiters: [],
+    },
+    about: {
+      summaryDescription: '',
+      visionStatement: '',
+      missionStatement: '',
+      principalMessage: '',
+    },
+    facilities: [],
+    courses: [],
+    achievements: [],
+  };
+
+  const completionFields = [
+    profile.collegeName,
+    profile.contact.emailAddress,
+    logoUrl,
+    coverBannerUrl,
+    profile.about.summaryDescription,
+  ];
+  const filled = completionFields.filter(Boolean).length;
+
+  return {
+    ...profile,
+    dashboard: {
+      totalStudentViews: 0,
+      totalEnquiries: 0,
+      totalInterestedStudents: stats.interestedStudents ?? 0,
+      profileCompletionPercentage: Math.round((filled / completionFields.length) * 100),
+    },
+  };
+}
 
 async function getRoleId(pool, roleName) {
   const r = await pool
@@ -183,6 +252,44 @@ const amsSqlService = {
       },
       interests,
     };
+  },
+
+  async getCollegeProfile(user) {
+    const pool = await getPool();
+    const col = await pool
+      .request()
+      .input('userId', sql.Int, user.id)
+      .query('SELECT * FROM Colleges WHERE UserID = @userId');
+    const collegeRow = col.recordset[0];
+    if (!collegeRow) throw new ApiError('College profile not found', 404);
+
+    const college = mapAmsCollegeRow(collegeRow);
+    const assets = await CollegeAssetModel.getByCollegeId(collegeRow.CollegeID);
+    const apps = await pool
+      .request()
+      .input('cid', sql.Int, collegeRow.CollegeID)
+      .query('SELECT COUNT(*) AS n FROM StudentApplications WHERE CollegeID = @cid');
+
+    return buildCollegeProfilePayload(college, assets, {
+      interestedStudents: apps.recordset[0]?.n ?? 0,
+    });
+  },
+
+  async updateCollegeProfile(user, data = {}) {
+    const pool = await getPool();
+    const col = await pool
+      .request()
+      .input('userId', sql.Int, user.id)
+      .query('SELECT * FROM Colleges WHERE UserID = @userId');
+    const collegeRow = col.recordset[0];
+    if (!collegeRow) throw new ApiError('College profile not found', 404);
+
+    if (data.collegeName !== undefined && String(data.collegeName).trim()) {
+      await this.updateCollege(collegeRow.CollegeID, { collegeName: String(data.collegeName).trim() });
+    }
+
+    await addActivity(`College profile updated: ${data.collegeName ?? collegeRow.CollegeName}`);
+    return this.getCollegeProfile(user);
   },
 
   async getCollegeDashboard(user) {

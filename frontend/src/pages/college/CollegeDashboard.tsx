@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import {
   deleteCollegeLogo,
@@ -12,6 +13,7 @@ import { useToast } from '../../context/ToastContext';
 import type { College } from '../../types';
 
 export function CollegeDashboard() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const [data, setData] = useState<{ college?: College; stats?: Record<string, number>; students?: Array<Record<string, unknown>> }>({});
   const [assets, setAssets] = useState<CollegeAssets | null>(null);
@@ -91,8 +93,19 @@ export function CollegeDashboard() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="rounded-lg bg-green-700 p-6 text-white shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-wide text-green-100">College Portal</p>
-          <h1 className="mt-1 text-2xl font-bold">Interested Students</h1>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-green-100">College Portal</p>
+              <h1 className="mt-1 text-2xl font-bold">Interested Students</h1>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard/college/profile')}
+              className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-green-700 shadow-md transition hover:bg-green-50"
+            >
+              Manage College Profile
+            </button>
+          </div>
         </div>
 
         <section className="rounded-lg border border-green-100 bg-white p-5 shadow-sm">

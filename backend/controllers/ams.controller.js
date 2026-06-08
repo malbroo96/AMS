@@ -17,6 +17,14 @@ exports.collegeDashboard = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await amsService.getCollegeDashboard(req.user) });
 });
 
+exports.collegeProfile = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await amsService.getCollegeProfile(req.user) });
+});
+
+exports.updateCollegeProfile = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await amsService.updateCollegeProfile(req.user, req.body) });
+});
+
 exports.adminDashboard = asyncHandler(async (_req, res) => {
   res.json({ success: true, data: await amsService.adminDashboard() });
 });
