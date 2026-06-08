@@ -1,53 +1,5 @@
 import type { ReactNode } from 'react'
 
-function BrainIllustration() {
-  return (
-    <svg viewBox="0 0 200 200" className="size-full" aria-hidden>
-      <defs>
-        <radialGradient id="brainGlow" cx="50%" cy="45%" r="55%">
-          <stop offset="0%" stopColor="#fbbf24" />
-          <stop offset="35%" stopColor="#a855f7" />
-          <stop offset="70%" stopColor="#3b82f6" />
-          <stop offset="100%" stopColor="#0f172a" />
-        </radialGradient>
-
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="2.5" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      <ellipse
-        cx="100"
-        cy="105"
-        rx="72"
-        ry="88"
-        fill="url(#brainGlow)"
-        opacity="0.75"
-        filter="url(#glow)"
-      />
-
-      <path
-        d="M55 95c8-25 35-40 45-40s37 15 45 40c-5 30-25 55-45 55S60 125 55 95z"
-        fill="none"
-        stroke="#fcd34d"
-        strokeWidth="1.5"
-        opacity="0.6"
-      />
-
-      <path
-        d="M70 70c12 8 20 8 30 0M75 120c10-8 20-8 30 0M90 55v90M110 55v90"
-        stroke="#e9d5ff"
-        strokeWidth="1"
-        opacity="0.5"
-      />
-    </svg>
-  )
-}
-
 function DiamondFrame({
   children,
   className = '',
