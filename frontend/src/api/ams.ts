@@ -127,7 +127,7 @@ export const getAdminInterests = () =>
 export const createCollege = (data: { collegeName: string; email: string; password?: string; status?: string }) =>
   api.post('/ams/admin/colleges', data);
 
-export const updateCollege = (id: string, data: Partial<College>) =>
+export const updateCollege = (id: string, data: Partial<College> & { password?: string }) =>
   api.put(`/ams/admin/colleges/${id}`, data);
 
 export const deleteCollege = (id: string) =>

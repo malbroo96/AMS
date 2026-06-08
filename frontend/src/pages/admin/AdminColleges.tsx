@@ -8,19 +8,46 @@ export function AdminColleges() {
   const { showToast } = useToast();
   const [colleges, setColleges] = useState<College[]>([]);
   const [form, setForm] = useState({ collegeName: '', email: '', password: '', status: 'pending' });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const load = () => getColleges({ status: 'all' }).then((res) => setColleges(res.data.data));
   useEffect(() => { load(); }, []);
 
+  const resetForm = () => {
+    setEditingId(null);
+    setForm({ collegeName: '', email: '', password: '', status: 'pending' });
+  };
+
+  const editCollege = (college: College) => {
+    setEditingId(college.id);
+    setForm({
+      collegeName: college.collegeName || '',
+      email: college.email || '',
+      password: '',
+      status: college.status || 'pending',
+    });
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     try {
-      const res = await createCollege(form);
-      showToast(`College created. Password: ${res.data.data.temporaryPassword}`, 'success');
-      setForm({ collegeName: '', email: '', password: '', status: 'pending' });
+      if (editingId) {
+        const payload: Partial<College> & { password?: string } = {
+          collegeName: form.collegeName,
+          email: form.email,
+          status: form.status as College['status'],
+        };
+        if (form.password) payload.password = form.password;
+        await updateCollege(editingId, payload as Partial<College> & { password?: string });
+        showToast('College updated successfully', 'success');
+      } else {
+        const res = await createCollege(form);
+        showToast(`College created. Password: ${res.data.data.temporaryPassword}`, 'success');
+      }
+      resetForm();
       await load();
     } catch (error: unknown) {
-      showToast((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to create college', 'error');
+      showToast((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to save college', 'error');
     }
   };
 
@@ -30,9 +57,21 @@ export function AdminColleges() {
         <div className="rounded-lg bg-slate-800 p-6 text-white"><h1 className="text-2xl font-bold">College Accounts</h1></div>
         <form onSubmit={submit} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-4">
           <input value={form.collegeName} onChange={(e) => setForm({ ...form, collegeName: e.target.value })} required placeholder="College name" className={inputClass} />
-          <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required placeholder="Email" className={inputClass} />
-          <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password or default" className={inputClass} />
-          <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white">Create</button>
+          <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required placeholder="Email" className={inputClass} />
+          <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editingId ? 'New password optional' : 'Password or default'} className={inputClass} />
+          <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className={inputClass}>
+            <option value="approved">Approved</option><option value="pending">Pending</option><option value="rejected">Rejected</option>
+          </select>
+          <div className="flex gap-2 md:col-span-4">
+            <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white">
+              {editingId ? 'Update College' : 'Create College'}
+            </button>
+            {editingId ? (
+              <button type="button" onClick={resetForm} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">
+                Cancel
+              </button>
+            ) : null}
+          </div>
         </form>
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <table className="w-full text-left text-sm">
@@ -47,7 +86,12 @@ export function AdminColleges() {
                       <option value="approved">Approved</option><option value="pending">Pending</option><option value="rejected">Rejected</option>
                     </select>
                   </td>
-                  <td className="p-3"><button onClick={() => deleteCollege(college.id).then(load)} className="text-sm font-semibold text-red-600">Delete</button></td>
+                  <td className="p-3">
+                    <div className="flex gap-3">
+                      <button type="button" onClick={() => editCollege(college)} className="text-sm font-semibold text-slate-700">Edit</button>
+                      <button type="button" onClick={() => deleteCollege(college.id).then(load)} className="text-sm font-semibold text-red-600">Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
