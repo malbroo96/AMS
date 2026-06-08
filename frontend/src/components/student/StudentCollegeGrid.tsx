@@ -1,4 +1,5 @@
 import type { ApprovedCollege } from '../../data/approvedColleges';
+import { shell } from '../ui/designTokens';
 import { StudentCollegeCard } from './StudentCollegeCard';
 
 export interface StudentCollegeGridProps {
@@ -22,10 +23,10 @@ export function StudentCollegeGrid({
     <section id="colleges" className="min-w-0">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-200">College explorer</p>
-          <h2 className="mt-1 text-2xl font-bold text-white">Find your next college</h2>
+          <p className={shell.eyebrow}>College explorer</p>
+          <h2 className={shell.title}>Find your next college</h2>
         </div>
-        <p className="text-sm font-semibold text-slate-400">{colleges.length} matches</p>
+        <p className="text-sm font-semibold text-slate-500">{colleges.length} matches</p>
       </div>
 
       {colleges.length > 0 ? (
@@ -43,9 +44,9 @@ export function StudentCollegeGrid({
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.035] px-5 py-12 text-center">
-          <h3 className="text-xl font-bold text-white">No colleges match your search</h3>
-          <p className="mt-2 text-sm text-slate-400">
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center">
+          <h3 className="text-xl font-bold text-slate-900">No colleges match your search</h3>
+          <p className="mt-2 text-sm text-slate-500">
             Try adjusting your search terms or widening location, course, rating, fees, and study mode filters.
           </p>
         </div>

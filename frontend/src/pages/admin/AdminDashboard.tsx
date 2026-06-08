@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { getAdminDashboard } from '../../api/ams';
+import { button, shell } from '../../components/ui/designTokens';
 
 export function AdminDashboard() {
   const [data, setData] = useState<Record<string, unknown>>({});
@@ -15,9 +16,9 @@ export function AdminDashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="rounded-lg bg-slate-800 p-6 text-white shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Admin Portal</p>
-          <h1 className="mt-1 text-2xl font-bold">Admission Management Control Center</h1>
+        <div className={shell.pageHero}>
+          <p className={shell.eyebrow}>Admin Portal</p>
+          <h1 className="mt-1 text-2xl font-bold text-slate-900">Admission Management Control Center</h1>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
           <Stat label="Total Students" value={Number(data.totalStudents || 0)} />
@@ -26,15 +27,15 @@ export function AdminDashboard() {
           <Stat label="Permission Requests" value={Number(data.permissionRequests || 0)} />
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link to="/dashboard/admin/colleges" className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white">Create College</Link>
-          <Link to="/dashboard/admin/students" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">View Students</Link>
-          <Link to="/dashboard/admin/permissions" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Manage Permissions</Link>
+          <Link to="/dashboard/admin/colleges" className={button.primary}>Create College</Link>
+          <Link to="/dashboard/admin/students" className={button.secondary}>View Students</Link>
+          <Link to="/dashboard/admin/permissions" className={button.secondary}>Manage Permissions</Link>
         </div>
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <section className={`p-5 ${shell.card}`}>
           <h2 className="text-lg font-bold text-slate-900">Recent Activities</h2>
           <div className="mt-4 space-y-3">
             {activities.map((activity) => (
-              <div key={activity.id} className="rounded-lg bg-slate-50 p-3 text-sm">
+              <div key={activity.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
                 <p className="font-medium text-slate-800">{activity.message}</p>
                 <p className="text-xs text-slate-500">{new Date(activity.createdAt).toLocaleString()}</p>
               </div>
@@ -48,9 +49,9 @@ export function AdminDashboard() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div className={`p-5 ${shell.card}`}>
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-bold text-slate-800">{value}</p>
+      <p className="mt-2 text-3xl font-bold text-blue-700">{value}</p>
     </div>
   );
 }

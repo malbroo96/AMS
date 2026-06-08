@@ -9,6 +9,7 @@ import {
 import { CollegeSearch, type CollegeSearchValues } from '../../components/student/CollegeSearch';
 import { StudentCollegeGrid } from '../../components/student/StudentCollegeGrid';
 import { Navbar } from '../../components/studentPortal/Navbar';
+import { badge, button, shell } from '../../components/ui/designTokens';
 import { useToast } from '../../context/ToastContext';
 import { approvedColleges } from '../../data/approvedColleges';
 import type { ApprovedCollege } from '../../data/approvedColleges';
@@ -149,36 +150,35 @@ export function StudentDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#05070b] font-sans text-white antialiased">
+    <div className={shell.page}>
       <Navbar />
 
       <main className="pb-12 pt-18">
-        <section className="relative overflow-hidden border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.3),transparent_34%),linear-gradient(135deg,#05070b_0%,#0b1020_52%,#05070b_100%)]">
-          <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-sky-400/70 to-transparent" />
+        <section className="border-b border-slate-200 bg-slate-50">
           <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
             <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-200">Student Portal</p>
-                <h1 className="mt-3 max-w-3xl text-4xl font-black leading-tight text-white sm:text-5xl">
+                <p className={shell.eyebrow}>Student Portal</p>
+                <h1 className="mt-3 max-w-3xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl">
                   Welcome back, {student?.name?.split(' ')[0] || 'student'}.
                 </h1>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
+                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
                   Explore approved colleges, save your favourites, and apply for admission from one focused dashboard.
                 </p>
               </div>
 
-              <div className="rounded-lg border border-white/10 bg-black/35 p-5 shadow-2xl shadow-blue-950/30 backdrop-blur-xl">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-200">Your profile</p>
+              <div className={`p-5 ${shell.card}`}>
+                <p className={shell.eyebrow}>Your profile</p>
                 <div className="mt-4 flex items-center gap-4">
-                  <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-sky-400 to-blue-700 text-lg font-black text-white">
+                  <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-blue-700 text-lg font-black text-white shadow-sm">
                     {initials(student?.name)}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-lg font-bold text-white">{student?.name || 'Student'}</p>
-                    <p className="truncate text-sm text-slate-400">{student?.email || '-'}</p>
+                    <p className="truncate text-lg font-bold text-slate-900">{student?.name || 'Student'}</p>
+                    <p className="truncate text-sm text-slate-500">{student?.email || '-'}</p>
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm">
+                <div className={`mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-sm ${shell.divider}`}>
                   <ProfileValue label="Mobile" value={student?.mobile} />
                   <ProfileValue label="Education" value={student?.education} />
                 </div>
@@ -196,8 +196,8 @@ export function StudentDashboard() {
 
         <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-6">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-200">Search colleges</p>
-            <h2 className="mt-1 text-2xl font-bold text-white">Discover institutions by name, course, or city</h2>
+            <p className={shell.eyebrow}>Search colleges</p>
+            <h2 className={shell.title}>Discover institutions by name, course, or city</h2>
           </div>
           <CollegeSearch values={searchValues} onChange={setSearchValues} onReset={resetExplorer} />
         </section>
@@ -235,17 +235,17 @@ export function StudentDashboard() {
         </section>
 
         <section id="applications" className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-lg border border-white/10 bg-[#080b12] p-5 shadow-2xl shadow-black/30 sm:p-6">
+          <div className={`p-5 sm:p-6 ${shell.card}`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-200">Application tracker</p>
-                <h2 className="mt-1 text-2xl font-bold text-white">Your college interests</h2>
+                <p className={shell.eyebrow}>Application tracker</p>
+                <h2 className={shell.title}>Your college interests</h2>
               </div>
               <p className="text-sm font-semibold text-slate-400">{interests.length} submitted</p>
             </div>
 
             {interests.length === 0 ? (
-              <div className="mt-5 rounded-md border border-dashed border-white/15 px-5 py-10 text-center text-sm text-slate-400">
+              <div className="mt-5 rounded-xl border border-dashed border-slate-300 px-5 py-10 text-center text-sm text-slate-500">
                 Apply to a college to begin tracking your admission progress here.
               </div>
             ) : (
@@ -253,10 +253,10 @@ export function StudentDashboard() {
                 {interests.map((interest) => (
                   <article
                     key={interest.id}
-                    className="grid gap-4 rounded-md border border-white/10 bg-white/[0.03] p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
+                    className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
                   >
                     <div>
-                      <h3 className="font-bold text-white">
+                      <h3 className="font-bold text-slate-900">
                         {interest.college?.collegeName || interest.school?.collegeName || 'College'}
                       </h3>
                       <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -265,7 +265,7 @@ export function StudentDashboard() {
                     </div>
                     <Status value={interest.status} />
                     <span
-                      className={`text-sm font-bold ${interest.approvedByAdmin ? 'text-emerald-300' : 'text-amber-300'}`}
+                      className={`text-sm font-bold ${interest.approvedByAdmin ? 'text-emerald-700' : 'text-amber-700'}`}
                     >
                       {interest.approvedByAdmin ? 'Profile access granted' : 'Awaiting admin approval'}
                     </span>
@@ -290,18 +290,18 @@ interface CollegeDetailsPanelProps {
 function CollegeDetailsPanel({ college, saved, onApplyNow, onSaveCollege }: CollegeDetailsPanelProps) {
   if (!college) {
     return (
-      <aside className="hidden h-max rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-5 text-center text-sm text-slate-400 xl:block">
+      <aside className="hidden h-max rounded-xl border border-dashed border-slate-300 bg-white p-5 text-center text-sm text-slate-500 xl:block">
         Select a college to view full details.
       </aside>
     );
   }
 
   return (
-    <aside id="details" className="h-max rounded-lg border border-white/10 bg-[#080b12] p-5 shadow-2xl shadow-black/30 xl:sticky xl:top-24">
-      <div className={`flex h-36 items-end rounded-lg bg-linear-to-br ${college.logoTone} p-5`}>
-        <div className="rounded-md bg-black/35 px-3 py-2 backdrop-blur">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-100">{college.admissionStatus}</p>
-          <h2 className="mt-1 text-2xl font-black text-white">{college.name}</h2>
+    <aside id="details" className={`h-max p-5 xl:sticky xl:top-24 ${shell.card}`}>
+      <div className={`flex h-36 items-end rounded-xl bg-linear-to-br ${college.logoTone} p-5`}>
+        <div className="rounded-xl bg-white/90 px-3 py-2 shadow-sm backdrop-blur">
+          <p className={shell.eyebrow}>{college.admissionStatus}</p>
+          <h2 className="mt-1 text-2xl font-black text-slate-900">{college.name}</h2>
         </div>
       </div>
 
@@ -312,28 +312,28 @@ function CollegeDetailsPanel({ college, saved, onApplyNow, onSaveCollege }: Coll
       </div>
 
       <div className="mt-5">
-        <h3 className="text-sm font-bold text-white">Location</h3>
-        <p className="mt-2 text-sm text-slate-400">{college.location}</p>
+        <h3 className="text-sm font-bold text-slate-900">Location</h3>
+        <p className="mt-2 text-sm text-slate-500">{college.location}</p>
       </div>
 
       <div className="mt-5">
-        <h3 className="text-sm font-bold text-white">Available courses</h3>
+        <h3 className="text-sm font-bold text-slate-900">Available courses</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           {college.courses.map((course) => (
-            <span key={course} className="rounded-md bg-sky-400/10 px-3 py-1.5 text-sm font-bold text-sky-100">
+            <span key={course} className={badge.blue}>
               {course}
             </span>
           ))}
         </div>
       </div>
 
-      <div className="mt-5 border-t border-white/10 pt-5">
-        <h3 className="text-sm font-bold text-white">Highlights</h3>
+      <div className={`mt-5 border-t pt-5 ${shell.divider}`}>
+        <h3 className="text-sm font-bold text-slate-900">Highlights</h3>
         <div className="mt-3 grid gap-2">
           {college.highlights.map((highlight) => (
             <div
               key={highlight}
-              className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-semibold text-slate-300"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600"
             >
               {highlight}
             </div>
@@ -345,7 +345,7 @@ function CollegeDetailsPanel({ college, saved, onApplyNow, onSaveCollege }: Coll
         <button
           type="button"
           onClick={() => onApplyNow(college.id)}
-          className="w-full rounded-md bg-sky-400 px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-slate-950 transition hover:bg-sky-300"
+          className={`w-full ${button.primary}`}
         >
           Apply Now
         </button>
@@ -354,8 +354,8 @@ function CollegeDetailsPanel({ college, saved, onApplyNow, onSaveCollege }: Coll
           onClick={() => onSaveCollege(college.id)}
           className={`w-full rounded-md border px-4 py-3 text-sm font-bold transition ${
             saved
-              ? 'border-emerald-400/50 bg-emerald-400/10 text-emerald-200'
-              : 'border-white/10 text-slate-200 hover:border-sky-300/50 hover:text-white'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-700'
           }`}
         >
           {saved ? 'Saved to list' : 'Save College'}
@@ -389,7 +389,7 @@ function ProfileValue({ label, value }: ProfileValueProps) {
   return (
     <div className="min-w-0">
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
-      <p className="mt-1 truncate font-semibold text-slate-200">{value || '-'}</p>
+      <p className="mt-1 truncate font-semibold text-slate-900">{value || '-'}</p>
     </div>
   );
 }
@@ -401,9 +401,9 @@ interface StatProps {
 
 function Stat({ label, value }: StatProps) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{label}</p>
-      <p className="mt-2 text-3xl font-black text-sky-300">{value}</p>
+    <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+      <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className="mt-2 text-3xl font-black text-blue-700">{value}</p>
     </div>
   );
 }
@@ -414,7 +414,7 @@ interface StatusProps {
 
 function Status({ value }: StatusProps) {
   return (
-    <span className="w-max rounded-md bg-sky-400/10 px-3 py-1.5 text-xs font-bold capitalize text-sky-100">
+    <span className={`w-max capitalize ${badge.blue}`}>
       {value.replace('_', ' ')}
     </span>
   );
@@ -426,7 +426,7 @@ interface PortalMessageProps {
 
 function PortalMessage({ message }: PortalMessageProps) {
   return (
-    <div className="col-span-full rounded-lg border border-white/10 bg-white/[0.035] px-5 py-12 text-center text-sm font-semibold text-slate-400">
+    <div className="col-span-full rounded-xl border border-slate-200 bg-white px-5 py-12 text-center text-sm font-semibold text-slate-500">
       {message}
     </div>
   );
@@ -439,9 +439,9 @@ interface DetailProps {
 
 function Detail({ label, value }: DetailProps) {
   return (
-    <div className="rounded-md border border-white/10 bg-white/[0.035] p-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-bold text-white">{value}</p>
+      <p className="mt-1 text-sm font-bold text-slate-900">{value}</p>
     </div>
   );
 }

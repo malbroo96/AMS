@@ -1,3 +1,5 @@
+import { button, form, shell } from '../ui/designTokens';
+
 export interface CollegeFiltersState {
   locations: string[];
   courses: string[];
@@ -36,16 +38,16 @@ interface FilterGroupProps {
 
 function FilterGroup({ title, values, selected, onToggle }: FilterGroupProps) {
   return (
-    <div className="border-t border-white/10 pt-5">
-      <h3 className="text-sm font-bold text-white">{title}</h3>
+    <div className={`border-t pt-5 ${shell.divider}`}>
+      <h3 className="text-sm font-bold text-slate-900">{title}</h3>
       <div className="mt-3 grid gap-2">
         {values.map((value) => (
-          <label key={value} className="flex items-center gap-3 text-sm font-medium text-slate-300">
+          <label key={value} className="flex items-center gap-3 text-sm font-medium text-slate-600">
             <input
               type="checkbox"
               checked={selected.includes(value)}
               onChange={() => onToggle(value)}
-              className="size-4 accent-sky-400"
+              className={form.checkbox}
             />
             <span>{value}</span>
           </label>
@@ -68,17 +70,17 @@ export function CollegeFilters({
   return (
     <aside
       id="filters"
-      className="h-max rounded-lg border border-white/10 bg-white/[0.035] p-5 shadow-xl shadow-black/20 lg:sticky lg:top-24"
+      className={`h-max p-5 lg:sticky lg:top-24 ${shell.card}`}
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-200">Filters</p>
-          <h2 className="mt-1 text-xl font-bold text-white">Refine colleges</h2>
+          <p className={shell.eyebrow}>Filters</p>
+          <h2 className="mt-1 text-xl font-bold text-slate-900">Refine colleges</h2>
         </div>
         <button
           type="button"
           onClick={onReset}
-          className="rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 transition hover:border-sky-300/50 hover:text-white"
+          className={button.ghost}
         >
           Reset
         </button>
@@ -99,8 +101,8 @@ export function CollegeFilters({
           onToggle={(value) => onChange({ ...filters, courses: toggleValue(filters.courses, value) })}
         />
 
-        <div className="border-t border-white/10 pt-5">
-          <h3 className="text-sm font-bold text-white">Rating</h3>
+        <div className={`border-t pt-5 ${shell.divider}`}>
+          <h3 className="text-sm font-bold text-slate-900">Rating</h3>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {ratingOptions.map((rating) => (
               <button
@@ -109,8 +111,8 @@ export function CollegeFilters({
                 onClick={() => onChange({ ...filters, minRating: rating })}
                 className={`rounded-md border px-2 py-2 text-sm font-bold transition ${
                   filters.minRating === rating
-                    ? 'border-sky-300 bg-sky-400 text-slate-950'
-                    : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-sky-300/50'
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
                 }`}
               >
                 {rating}+
@@ -119,10 +121,10 @@ export function CollegeFilters({
           </div>
         </div>
 
-        <div className="border-t border-white/10 pt-5">
+        <div className={`border-t pt-5 ${shell.divider}`}>
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-white">Maximum fees</h3>
-            <span className="text-xs font-bold text-sky-200 sm:text-sm">
+            <h3 className="text-sm font-bold text-slate-900">Maximum fees</h3>
+            <span className="text-xs font-bold text-blue-700 sm:text-sm">
               Under Rs {filters.maxFees.toLocaleString('en-IN')}
             </span>
           </div>
@@ -133,7 +135,7 @@ export function CollegeFilters({
             step="10000"
             value={filters.maxFees}
             onChange={(event) => onChange({ ...filters, maxFees: Number(event.target.value) })}
-            className="mt-4 w-full accent-sky-400"
+            className={`mt-4 ${form.range}`}
           />
         </div>
 
