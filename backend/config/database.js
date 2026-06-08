@@ -7,6 +7,8 @@ let pool = null;
 const dbConfig = {
   server: db.server,
   database: db.database,
+  connectionTimeout: 15000,
+  requestTimeout: 30000,
   options: {
     enableArithAbort: true,
     encrypt: db.options.encrypt,
@@ -38,13 +40,25 @@ const dbConfig = {
 async function getPool() {
   if (pool) return pool;
 
-  pool = await sql.connect(dbConfig);
+  try {
+    console.log('Attempting MSSQL connection to:', dbConfig.server);
+    pool = await Promise.race([
+      sql.connect(dbConfig),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), 10000)
+      )
+    ]);
 
-  pool.on('error', (err) => {
-    console.error('MSSQL pool error:', err.message);
-  });
+    pool.on('error', (err) => {
+      console.error('MSSQL pool error:', err.message);
+    });
 
-  return pool;
+    console.log('Successfully connected to MSSQL database');
+    return pool;
+  } catch (error) {
+    console.error('Failed to connect to database:', error.message);
+    throw error;
+  }
 }
 
 /**
