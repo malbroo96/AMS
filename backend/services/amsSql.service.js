@@ -5,6 +5,7 @@ const UserModel = require('../models/userStore');
 const { mapAmsStudentRow, mapAmsCollegeRow } = require('../utils/mappers');
 const AmsActivity = require('../models/AmsActivity.model');
 const CollegeAssetModel = require('../models/CollegeAsset.model');
+const collegePortal = require('./collegePortalSql.service');
 
 function buildCollegeProfilePayload(college, assets, stats = {}) {
   const logoUrl = assets?.logoUrl || null;
@@ -255,40 +256,51 @@ const amsSqlService = {
   },
 
   async getCollegeProfile(user) {
-    const pool = await getPool();
-    const col = await pool
-      .request()
-      .input('userId', sql.Int, user.id)
-      .query('SELECT * FROM Colleges WHERE UserID = @userId');
-    const collegeRow = col.recordset[0];
-    if (!collegeRow) throw new ApiError('College profile not found', 404);
-
-    const college = mapAmsCollegeRow(collegeRow);
-    const assets = await CollegeAssetModel.getByCollegeId(collegeRow.CollegeID);
-    const apps = await pool
-      .request()
-      .input('cid', sql.Int, collegeRow.CollegeID)
-      .query('SELECT COUNT(*) AS n FROM StudentApplications WHERE CollegeID = @cid');
-
-    return buildCollegeProfilePayload(college, assets, {
-      interestedStudents: apps.recordset[0]?.n ?? 0,
-    });
+    return collegePortal.getOwnProfile(user);
   },
 
   async updateCollegeProfile(user, data = {}) {
-    const pool = await getPool();
-    const col = await pool
-      .request()
-      .input('userId', sql.Int, user.id)
-      .query('SELECT * FROM Colleges WHERE UserID = @userId');
-    const collegeRow = col.recordset[0];
-    if (!collegeRow) throw new ApiError('College profile not found', 404);
+    return collegePortal.updateProfile(user, data);
+  },
 
-    await this.updateCollege(collegeRow.CollegeID, {
-      collegeName: data.collegeName,
-      email: data.email ?? data.contact?.emailAddress,
-    });
-    return this.getCollegeProfile(user);
+  async searchCollegeProfiles(query) {
+    return collegePortal.listPublic(query);
+  },
+
+  async getPublicCollegeProfile(collegeId) {
+    return collegePortal.getPublicDetails(collegeId);
+  },
+
+  async saveCollegeCourse(user, courseId, data) {
+    return collegePortal.saveCourse(user, courseId, data);
+  },
+
+  async deleteCollegeCourse(user, courseId) {
+    return collegePortal.deleteCourse(user, courseId);
+  },
+
+  async saveCollegeAchievement(user, achievementId, data) {
+    return collegePortal.saveAchievement(user, achievementId, data);
+  },
+
+  async deleteCollegeAchievement(user, achievementId) {
+    return collegePortal.deleteAchievement(user, achievementId);
+  },
+
+  async saveCollegeGalleryImage(user, imageId, data, file) {
+    return collegePortal.saveGalleryImage(user, imageId, data, file);
+  },
+
+  async deleteCollegeGalleryImage(user, imageId) {
+    return collegePortal.deleteGalleryImage(user, imageId);
+  },
+
+  async createCollegeEnquiry(collegeId, data) {
+    return collegePortal.createEnquiry(collegeId, data);
+  },
+
+  async updateCollegeEnquiry(user, enquiryId, data) {
+    return collegePortal.updateEnquiry(user, enquiryId, data);
   },
 
   async getCollegeDashboard(user) {

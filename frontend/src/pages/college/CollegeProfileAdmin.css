@@ -322,12 +322,16 @@
   font-weight: 600;
 }
 
-.course-actions {
+.course-actions,
+.item-actions {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
-.course-actions button {
+.course-actions button,
+.item-actions button,
+.course-item select {
   padding: 8px 16px;
   background: #667eea;
   color: white;
@@ -338,12 +342,61 @@
   transition: all 0.3s ease;
 }
 
-.course-actions button:last-child {
+.course-actions button:last-child,
+.item-actions button:last-child {
   background: #e74c3c;
 }
 
-.course-actions button:hover {
+.course-actions button:hover,
+.item-actions button:hover {
   transform: translateY(-2px);
+}
+
+.course-item select {
+  background: white;
+  color: #333;
+  border: 1px solid #d7dce5;
+}
+
+.gallery-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.gallery-admin-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  padding-bottom: 14px;
+}
+
+.gallery-admin-item img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: #f5f7fa;
+}
+
+.gallery-admin-item h3,
+.gallery-admin-item p,
+.gallery-admin-item .item-actions {
+  margin-left: 14px;
+  margin-right: 14px;
+}
+
+.gallery-admin-item h3 {
+  margin-top: 12px;
+  margin-bottom: 4px;
+  font-size: 1rem;
+  color: #333;
+}
+
+.gallery-admin-item p {
+  margin-top: 0;
+  color: #666;
+  font-size: 0.88rem;
 }
 
 /* Course Form */

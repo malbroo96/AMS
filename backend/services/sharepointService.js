@@ -104,6 +104,13 @@ function assetFilename(assetType, originalName, mimeType) {
   return `${assetType}${ext === '.jpeg' ? '.jpg' : ext}`;
 }
 
+function galleryFilename(itemId, originalName, mimeType) {
+  const fallbackExt = mimeType === 'image/png' ? '.png' : mimeType === 'image/webp' ? '.webp' : '.jpg';
+  const originalExt = path.extname(originalName || '').toLowerCase();
+  const ext = ['.jpg', '.jpeg', '.png', '.webp'].includes(originalExt) ? originalExt : fallbackExt;
+  return `gallery-${sanitizeName(itemId)}${ext === '.jpeg' ? '.jpg' : ext}`;
+}
+
 function localAssetDirectory(collegeId) {
   return path.join(__dirname, '..', uploadConfig.dir, 'colleges', collegeFolderName(collegeId));
 }
@@ -132,6 +139,26 @@ async function uploadLocalAsset({ collegeId, file, assetType }) {
     size: compressedBuffer.length,
     mimeType: file.mimetype,
     assetType,
+    storage: 'local',
+    folderPath: directory,
+  };
+}
+
+async function uploadLocalGalleryImage({ collegeId, file, itemId }) {
+  const compressedBuffer = await compressImage(file);
+  const filename = galleryFilename(itemId, file.originalname, file.mimetype);
+  const directory = path.join(localAssetDirectory(collegeId), 'gallery');
+
+  await fs.mkdir(directory, { recursive: true });
+  await fs.writeFile(path.join(directory, filename), compressedBuffer);
+
+  return {
+    url: `${localAssetUrl(collegeId, 'gallery')}/${filename}`,
+    id: null,
+    name: filename,
+    size: compressedBuffer.length,
+    mimeType: file.mimetype,
+    assetType: 'gallery',
     storage: 'local',
     folderPath: directory,
   };
@@ -185,6 +212,36 @@ const sharepointService = {
       size: uploaded.size,
       mimeType: file.mimetype,
       assetType,
+      storage: 'sharepoint',
+      folderPath,
+    };
+  },
+
+  async uploadCollegeGalleryImage({ collegeId, file, itemId }) {
+    if (!isSharePointConfigured()) {
+      return uploadLocalGalleryImage({ collegeId, file, itemId });
+    }
+
+    const client = getGraphClient();
+    const rootFolder = sharepointConfig.folder;
+    const folderPath = `${rootFolder}/${collegeFolderName(collegeId)}/gallery`;
+    const compressedBuffer = await compressImage(file);
+    const filename = galleryFilename(itemId, file.originalname, file.mimetype);
+    const uploadPath = `${folderPath}/${filename}`;
+
+    await ensureFolder(client, folderPath);
+
+    const uploaded = await client
+      .api(`${driveApiBase()}/root:/${graphPath(uploadPath)}:/content`)
+      .put(compressedBuffer);
+
+    return {
+      url: uploaded.webUrl,
+      id: uploaded.id,
+      name: uploaded.name,
+      size: uploaded.size,
+      mimeType: file.mimetype,
+      assetType: 'gallery',
       storage: 'sharepoint',
       folderPath,
     };
