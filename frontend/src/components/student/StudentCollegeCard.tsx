@@ -1,8 +1,8 @@
-import type { ApprovedCollege } from '../../data/approvedColleges';
+import type { CollegeExplorerItem } from '../../types/collegeExplorer';
 import { badge, button, shell } from '../ui/designTokens';
 
 export interface StudentCollegeCardProps {
-  college: ApprovedCollege;
+  college: CollegeExplorerItem;
   selected?: boolean;
   saved?: boolean;
   onViewDetails: (id: string) => void;

@@ -5,6 +5,7 @@ const CollegeAssetModel = require('../models/CollegeAsset.model');
 const sharepointService = require('./sharepointService');
 
 let tablesReady = false;
+const DEFAULT_PROFILE_COMPLETION = 15;
 
 function jsonParse(value, fallback) {
   if (!value) return fallback;
@@ -156,6 +157,15 @@ async function ensureTables() {
       );
       CREATE INDEX IX_CollegeEnquiries_CollegeID ON dbo.CollegeEnquiries(CollegeID);
     END
+
+    MERGE dbo.CollegeProfiles AS target
+    USING (
+      SELECT CollegeID, Email
+      FROM dbo.Colleges
+    ) AS source
+    ON target.CollegeID = source.CollegeID
+    WHEN NOT MATCHED THEN INSERT (CollegeID, ContactEmail, ProfileCompletionPercentage)
+      VALUES (source.CollegeID, source.Email, ${DEFAULT_PROFILE_COMPLETION});
   `);
   tablesReady = true;
 }

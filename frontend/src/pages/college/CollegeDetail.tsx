@@ -192,7 +192,7 @@ const CollegeDetail: React.FC = () => {
             <div className="achievements-list">
               {(college.achievements || []).map((achievement) => (
                 <div key={String(achievement.id)} className="achievement-item">
-                  {achievement.achievementImageUrl && <img src={String(achievement.achievementImageUrl)} alt={String(achievement.achievementTitle)} />}
+                  {Boolean(achievement.achievementImageUrl) && <img src={String(achievement.achievementImageUrl)} alt={String(achievement.achievementTitle)} />}
                   <div>
                     <h3>{String(achievement.achievementTitle ?? '')}</h3>
                     <p>{String(achievement.description ?? '')}</p>

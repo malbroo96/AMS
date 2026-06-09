@@ -1010,7 +1010,7 @@ const CollegeProfileAdmin: React.FC = () => {
               <div className="gallery-admin-grid">
                 {gallery.map((image) => (
                   <div key={String(image.id)} className="gallery-admin-item">
-                    {image.imageUrl && <img src={String(image.imageUrl)} alt={String(image.imageTitle ?? 'Campus image')} />}
+                    {Boolean(image.imageUrl) && <img src={String(image.imageUrl)} alt={String(image.imageTitle ?? 'Campus image')} />}
                     <h3>{String(image.imageTitle ?? 'Campus image')}</h3>
                     <p>{String(image.imageCategory ?? '')}</p>
                     <div className="item-actions">

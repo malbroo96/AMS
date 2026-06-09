@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getStudentDashboard } from '../../api/ams';
+import { getStudentDashboard, searchCollegeProfiles } from '../../api/ams';
 import {
   CollegeFilters,
   defaultCollegeFilters,
@@ -11,8 +11,7 @@ import { StudentCollegeGrid } from '../../components/student/StudentCollegeGrid'
 import { Navbar } from '../../components/studentPortal/Navbar';
 import { badge, button, shell } from '../../components/ui/designTokens';
 import { useToast } from '../../context/ToastContext';
-import { approvedColleges } from '../../data/approvedColleges';
-import type { ApprovedCollege } from '../../data/approvedColleges';
+import { mapProfileToExplorerCollege, type CollegeExplorerItem } from '../../types/collegeExplorer';
 import type { Interest, StudentProfile } from '../../types';
 
 const SAVED_COLLEGES_KEY = 'ams-saved-colleges';
@@ -47,20 +46,21 @@ export function StudentDashboard() {
   const [interests, setInterests] = useState<Interest[]>([]);
   const [stats, setStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [selectedCollegeId, setSelectedCollegeId] = useState<string | null>(approvedColleges[0]?.id ?? null);
+  const [colleges, setColleges] = useState<CollegeExplorerItem[]>([]);
+  const [selectedCollegeId, setSelectedCollegeId] = useState<string | null>(null);
   const [savedCollegeIds, setSavedCollegeIds] = useState<Set<string>>(() => loadSavedCollegeIds());
 
   const locationOptions = useMemo(
-    () => [...new Set(approvedColleges.map((college) => college.city))].sort(),
-    []
+    () => [...new Set(colleges.map((college) => college.city).filter(Boolean))].sort(),
+    [colleges]
   );
   const courseOptions = useMemo(
-    () => [...new Set(approvedColleges.flatMap((college) => college.courses))].sort(),
-    []
+    () => [...new Set(colleges.flatMap((college) => college.courses))].sort(),
+    [colleges]
   );
   const studyModeOptions = useMemo(
-    () => [...new Set(approvedColleges.flatMap((college) => college.studyModes))].sort(),
-    []
+    () => [...new Set(colleges.flatMap((college) => college.studyModes))].sort(),
+    [colleges]
   );
 
   const filteredColleges = useMemo(() => {
@@ -68,7 +68,7 @@ export function StudentDashboard() {
     const course = searchValues.course.trim().toLowerCase();
     const city = searchValues.city.trim().toLowerCase();
 
-    return approvedColleges.filter((college) => {
+    return colleges.filter((college) => {
       const matchesName = !collegeName || college.name.toLowerCase().includes(collegeName);
       const matchesCourse =
         (!course || college.courses.some((item) => item.toLowerCase().includes(course))) &&
@@ -84,26 +84,29 @@ export function StudentDashboard() {
 
       return matchesName && matchesCourse && matchesCity && matchesRating && matchesFees && matchesStudyMode;
     });
-  }, [filters, searchValues]);
+  }, [colleges, filters, searchValues]);
 
   const selectedCollege =
     filteredColleges.find((college) => college.id === selectedCollegeId) ?? filteredColleges[0] ?? null;
 
   const explorerStats = useMemo(
     () => ({
-      totalColleges: approvedColleges.length,
+      totalColleges: colleges.length,
       matchingColleges: filteredColleges.length,
       savedColleges: savedCollegeIds.size,
     }),
-    [filteredColleges.length, savedCollegeIds.size]
+    [colleges.length, filteredColleges.length, savedCollegeIds.size]
   );
 
   useEffect(() => {
     let active = true;
 
-    getStudentDashboard()
-      .then((dashboardRes) => {
+    Promise.all([getStudentDashboard(), searchCollegeProfiles()])
+      .then(([dashboardRes, collegesRes]) => {
         if (!active) return;
+        const nextColleges = collegesRes.data.data.map(mapProfileToExplorerCollege);
+        setColleges(nextColleges);
+        setSelectedCollegeId((current) => current ?? nextColleges[0]?.id ?? null);
         setStudent(dashboardRes.data.data.student);
         setInterests(dashboardRes.data.data.interests);
         setStats(dashboardRes.data.data.stats);
@@ -139,7 +142,7 @@ export function StudentDashboard() {
   };
 
   const handleApplyNow = (collegeId: string) => {
-    const college = approvedColleges.find((item) => item.id === collegeId);
+    const college = colleges.find((item) => item.id === collegeId);
     showToast(`Starting application for ${college?.name ?? 'college'}`, 'success');
     navigate('/dashboard/student/apply');
   };
@@ -281,7 +284,7 @@ export function StudentDashboard() {
 }
 
 interface CollegeDetailsPanelProps {
-  college: ApprovedCollege | null;
+  college: CollegeExplorerItem | null;
   saved: boolean;
   onApplyNow: (id: string) => void;
   onSaveCollege: (id: string) => void;

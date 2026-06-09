@@ -241,13 +241,13 @@ const amsSqlService = {
       )
     );
 
-    const approvedColleges = await pool.request().query("SELECT COUNT(*) AS n FROM Colleges WHERE Status = 'approved'");
+    const approvedCollegeCount = await pool.request().query("SELECT COUNT(*) AS n FROM Colleges WHERE Status = 'approved'");
     const granted = interests.filter((i) => i.approvedByAdmin).length;
 
     return {
       student,
       stats: {
-        registeredColleges: approvedColleges.recordset[0].n,
+        registeredColleges: approvedCollegeCount.recordset[0].n,
         appliedColleges: interests.length,
         approvedAccess: granted,
       },
@@ -615,6 +615,7 @@ const amsSqlService = {
 
   async createCollege(admin, data) {
     const pool = await getPool();
+    await collegePortal.ensureTables();
     const email = data.email.trim().toLowerCase();
     const existing = await UserModel.findByEmail(email);
     if (existing) throw new ApiError('Email already registered', 409);
@@ -652,9 +653,19 @@ const amsSqlService = {
         OUTPUT inserted.CollegeID, inserted.CollegeName, inserted.Email, inserted.UserID, inserted.Status, inserted.CreatedByAdminUserID, inserted.CreatedAt
         VALUES (@collegeName, @email, @userId, @status, @createdBy)
       `);
+      const crow = colOut.recordset[0];
+
+      await new sql.Request(transaction)
+        .input('collegeId', sql.Int, crow.CollegeID)
+        .input('contactEmail', sql.NVarChar(255), email)
+        .input('completion', sql.Decimal(5, 2), 15)
+        .query(`
+          INSERT INTO dbo.CollegeProfiles (CollegeID, ContactEmail, ProfileCompletionPercentage)
+          VALUES (@collegeId, @contactEmail, @completion)
+        `);
+
       await transaction.commit();
 
-      const crow = colOut.recordset[0];
       await addActivity(`Admin created college account: ${crow.CollegeName}`);
       const college = mapAmsCollegeRow({
         CollegeID: crow.CollegeID,

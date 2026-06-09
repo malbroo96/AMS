@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CollegeDetails } from '../components/studentPortal/CollegeDetails';
 import { CollegeGrid } from '../components/studentPortal/CollegeGrid';
@@ -6,7 +6,8 @@ import { FilterSidebar, type Filters } from '../components/studentPortal/FilterS
 import { Navbar } from '../components/studentPortal/Navbar';
 import { SearchBar, type SearchValues } from '../components/studentPortal/SearchBar';
 import { button, shell } from '../components/ui/designTokens';
-import { approvedColleges } from '../data/approvedColleges';
+import { searchCollegeProfiles } from '../api/ams';
+import { mapProfileToExplorerCollege, type CollegeExplorerItem } from '../types/collegeExplorer';
 
 const initialSearch: SearchValues = {
   collegeName: '',
@@ -25,14 +26,36 @@ const initialFilters: Filters = {
 export function LandingPage() {
   const [searchValues, setSearchValues] = useState<SearchValues>(initialSearch);
   const [filters, setFilters] = useState<Filters>(initialFilters);
-  const [selectedCollegeId, setSelectedCollegeId] = useState(approvedColleges[0]?.id ?? '');
+  const [colleges, setColleges] = useState<CollegeExplorerItem[]>([]);
+  const [selectedCollegeId, setSelectedCollegeId] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    searchCollegeProfiles()
+      .then((res) => {
+        if (!active) return;
+        const next = res.data.data.map(mapProfileToExplorerCollege);
+        setColleges(next);
+        setSelectedCollegeId((current) => current || next[0]?.id || '');
+      })
+      .catch(() => {
+        if (active) setColleges([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const locationOptions = useMemo(() => [...new Set(colleges.map((college) => college.city).filter(Boolean))].sort(), [colleges]);
+  const courseOptions = useMemo(() => [...new Set(colleges.flatMap((college) => college.courses))].sort(), [colleges]);
+  const studyModeOptions = useMemo(() => [...new Set(colleges.flatMap((college) => college.studyModes))].sort(), [colleges]);
 
   const filteredColleges = useMemo(() => {
     const collegeName = searchValues.collegeName.trim().toLowerCase();
     const location = searchValues.location.trim().toLowerCase();
     const course = searchValues.course.trim().toLowerCase();
 
-    return approvedColleges.filter((college) => {
+    return colleges.filter((college) => {
       const matchesName = !collegeName || college.name.toLowerCase().includes(collegeName);
       const matchesLocation =
         (!location || college.location.toLowerCase().includes(location)) &&
@@ -47,7 +70,7 @@ export function LandingPage() {
 
       return matchesName && matchesLocation && matchesCourse && matchesFees && matchesRating && matchesStudyMode;
     });
-  }, [filters, searchValues]);
+  }, [colleges, filters, searchValues]);
 
   const selectedCollege =
     filteredColleges.find((college) => college.id === selectedCollegeId) ?? filteredColleges[0] ?? null;
@@ -96,7 +119,13 @@ export function LandingPage() {
         </section>
 
         <section className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-8 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-8">
-          <FilterSidebar filters={filters} onChange={setFilters} />
+          <FilterSidebar
+            filters={filters}
+            locationOptions={locationOptions}
+            courseOptions={courseOptions}
+            studyModeOptions={studyModeOptions}
+            onChange={setFilters}
+          />
 
           <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
             <CollegeGrid
