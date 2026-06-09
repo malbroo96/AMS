@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import {
   deleteCollegeLogo,
   getCollegeAssets,
   getCollegeDashboard,
+  updateCollegeProfile,
   uploadCollegeBanner,
   uploadCollegeLogo,
   type CollegeAssets,
@@ -13,16 +15,28 @@ import { useToast } from '../../context/ToastContext';
 import type { College } from '../../types';
 
 export function CollegeDashboard() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const [data, setData] = useState<{ college?: College; stats?: Record<string, number>; students?: Array<Record<string, unknown>> }>({});
   const [assets, setAssets] = useState<CollegeAssets | null>(null);
   const [uploading, setUploading] = useState<'logo' | 'banner' | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ collegeName: '', email: '' });
 
   useEffect(() => {
     getCollegeDashboard()
       .then((res) => setData(res.data.data))
       .catch(() => showToast('Unable to load college dashboard', 'error'));
-  }, []);
+  }, [showToast]);
+
+  useEffect(() => {
+    if (!data.college) return;
+    setProfileForm({
+      collegeName: data.college.collegeName || '',
+      email: data.college.email || '',
+    });
+  }, [data.college]);
 
   useEffect(() => {
     if (!data.college?.id) return;
@@ -88,9 +102,79 @@ export function CollegeDashboard() {
     }
   };
 
+  const handleSaveProfile = async () => {
+    if (!profileForm.collegeName.trim() || !profileForm.email.trim()) {
+      showToast('College name and email are required', 'error');
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const res = await updateCollegeProfile({
+        collegeName: profileForm.collegeName.trim(),
+        email: profileForm.email.trim(),
+      });
+      setData((current) => ({
+        ...current,
+        college: current.college
+          ? {
+              ...current.college,
+              collegeName: res.data.data.collegeName,
+              email: res.data.data.email,
+              status: (res.data.data.status as College['status']) || current.college.status,
+            }
+          : ({
+              id: res.data.data.id,
+              collegeName: res.data.data.collegeName,
+              email: res.data.data.email,
+              status: res.data.data.status as College['status'],
+              schoolName: res.data.data.collegeName,
+              city: res.data.data.location?.city || '',
+            } satisfies College),
+      }));
+      setEditMode(false);
+      showToast('College profile updated successfully', 'success');
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Unable to update college profile';
+      showToast(message, 'error');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
+<<<<<<< HEAD
+        <div className="rounded-lg bg-green-700 p-6 text-white shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-green-100">College Portal</p>
+              <h1 className="mt-1 text-2xl font-bold">Interested Students</h1>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard/college/profile')}
+              className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-green-700 shadow-md transition hover:bg-green-50"
+            >
+              Manage College Profile
+            </button>
+          </div>
+        </div>
+
+        <section className="rounded-lg border border-green-100 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-lg font-bold text-slate-900">College Details</h2>
+            <button
+              type="button"
+              onClick={() => setEditMode((current) => !current)}
+              className="rounded-md border border-green-200 px-4 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-50"
+            >
+              {editMode ? 'Cancel' : 'Edit Profile'}
+            </button>
+          </div>
+=======
         <div className={shell.pageHero}>
           <p className={shell.eyebrow}>College Portal</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">Interested Students</h1>
@@ -98,11 +182,48 @@ export function CollegeDashboard() {
 
         <section className={`p-5 ${shell.card}`}>
           <h2 className="text-lg font-bold text-slate-900">College Details</h2>
+>>>>>>> SUMANTH
           <div className="mt-3 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
-            <p><span className="font-semibold">College:</span> {String(data.college?.collegeName || '-')}</p>
-            <p><span className="font-semibold">Email:</span> {String(data.college?.email || '-')}</p>
+            {editMode ? (
+              <>
+                <label className="block">
+                  <span className="font-semibold">College</span>
+                  <input
+                    value={profileForm.collegeName}
+                    onChange={(event) => setProfileForm({ ...profileForm, collegeName: event.target.value })}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className="font-semibold">Email</span>
+                  <input
+                    type="email"
+                    value={profileForm.email}
+                    onChange={(event) => setProfileForm({ ...profileForm, email: event.target.value })}
+                    className={inputClass}
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                <p><span className="font-semibold">College:</span> {String(data.college?.collegeName || '-')}</p>
+                <p><span className="font-semibold">Email:</span> {String(data.college?.email || '-')}</p>
+              </>
+            )}
             <p><span className="font-semibold">Status:</span> {String(data.college?.status || '-')}</p>
           </div>
+          {editMode ? (
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={savingProfile}
+                className="rounded-md bg-green-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-800 disabled:opacity-60"
+              >
+                {savingProfile ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          ) : null}
         </section>
 
         <section className={`p-5 ${shell.card}`}>
@@ -172,6 +293,8 @@ export function CollegeDashboard() {
     </DashboardLayout>
   );
 }
+
+const inputClass = 'mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-green-600';
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (

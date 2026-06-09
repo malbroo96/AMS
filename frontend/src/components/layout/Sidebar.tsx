@@ -16,6 +16,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
   ],
   college: [
     { to: '/dashboard/college', label: 'Dashboard' },
+    { to: '/dashboard/college/profile', label: 'College Profile' },
     { to: '/dashboard/college?view=students', label: 'Interested Students' },
   ],
   admin: [

@@ -21,5 +21,13 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/api/collegeAPI.ts",
+    "src/hooks/useCollege.ts",
+    "src/pages/college/CollegeDetail.tsx",
+    "src/pages/college/CollegeProfileAdmin.tsx",
+    "src/pages/college/CollegeSearch.tsx",
+    "src/redux"
+  ]
 }

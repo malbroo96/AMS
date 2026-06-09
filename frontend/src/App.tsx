@@ -18,6 +18,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then((m
 const AdminColleges = lazy(() => import('./pages/admin/AdminColleges').then((m) => ({ default: m.AdminColleges })));
 const AdminStudents = lazy(() => import('./pages/admin/AdminStudents').then((m) => ({ default: m.AdminStudents })));
 const AdminPermissions = lazy(() => import('./pages/admin/AdminPermissions').then((m) => ({ default: m.AdminPermissions })));
+const CollegeProfileAdmin = lazy(() => import('./pages/college/CollegeProfileAdmin').then((m) => ({ default: m.default })));
 
 function PageLoader() {
   return (
@@ -38,6 +39,8 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/register/college" element={<CollegeRegisterPage />} />
+              <Route path="/colleges" element={<LandingPage />} />
+              <Route path="/college/:collegeId" element={<LandingPage />} />
 
               <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                 <Route path="/dashboard/student" element={<StudentDashboard />} />
@@ -46,6 +49,8 @@ function App() {
 
               <Route element={<ProtectedRoute allowedRoles={['college']} />}>
                 <Route path="/dashboard/college" element={<CollegeDashboard />} />
+                <Route path="/dashboard/college/profile" element={<CollegeProfileAdmin />} />
+                <Route path="/dashboard/college/profile/:collegeId" element={<CollegeProfileAdmin />} />
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>

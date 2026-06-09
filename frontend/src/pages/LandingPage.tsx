@@ -82,6 +82,12 @@ export function LandingPage() {
                 >
                   Register as College
                 </Link>
+                <Link
+                  to="/colleges"
+                  className="rounded-md border border-sky-300/35 bg-white/[0.03] px-5 py-3 text-sm font-bold text-sky-100 transition hover:border-sky-200 hover:bg-sky-400/10"
+                >
+                  Browse Colleges
+                </Link>
               </div>
             </div>
 

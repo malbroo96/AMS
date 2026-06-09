@@ -13,6 +13,62 @@ export const markCollegeInterest = (collegeId: string) =>
 export const getCollegeDashboard = () =>
   api.get<{ success: boolean; data: { college: College; stats: Record<string, number>; students: Array<Record<string, unknown>> } }>('/ams/college/dashboard');
 
+export interface CollegeProfileData {
+  id: string;
+  collegeName: string;
+  shortName?: string;
+  establishmentYear?: number | null;
+  collegeType?: string;
+  universityAffiliation?: string;
+  naacGrade?: string;
+  aicteApproval?: boolean;
+  ugcRecognition?: boolean;
+  email: string;
+  status: string;
+  logoUrl?: string | null;
+  coverBannerUrl?: string | null;
+  prospectusUrl?: string | null;
+  location?: {
+    country?: string;
+    state?: string;
+    city?: string;
+    pincode?: string;
+    fullAddress?: string;
+  };
+  contact?: {
+    emailAddress?: string;
+    admissionMobileNumber?: string;
+    officeMobileNumber?: string;
+    websiteUrl?: string;
+  };
+  placements?: {
+    placementPercentage?: number | null;
+    highestPackage?: string;
+    averagePackage?: string;
+    topRecruiters?: string[];
+  };
+  about?: {
+    summaryDescription?: string;
+    visionStatement?: string;
+    missionStatement?: string;
+    principalMessage?: string;
+  };
+  courses?: Array<Record<string, unknown>>;
+  achievements?: Array<Record<string, unknown>>;
+  dashboard?: {
+    totalStudentViews?: number;
+    totalEnquiries?: number;
+    totalInterestedStudents?: number;
+    profileCompletionPercentage?: number;
+  };
+}
+
+export const getCollegeProfile = () =>
+  api.get<{ success: boolean; data: CollegeProfileData }>('/ams/college/profile');
+
+export const updateCollegeProfile = (data: Partial<CollegeProfileData>) =>
+  api.put<{ success: boolean; data: CollegeProfileData }>('/ams/college/profile', data);
+
 export interface CollegeAssets {
   collegeId: string;
   collegeName: string;
@@ -71,7 +127,7 @@ export const getAdminInterests = () =>
 export const createCollege = (data: { collegeName: string; email: string; password?: string; status?: string }) =>
   api.post('/ams/admin/colleges', data);
 
-export const updateCollege = (id: string, data: Partial<College>) =>
+export const updateCollege = (id: string, data: Partial<College> & { password?: string }) =>
   api.put(`/ams/admin/colleges/${id}`, data);
 
 export const deleteCollege = (id: string) =>

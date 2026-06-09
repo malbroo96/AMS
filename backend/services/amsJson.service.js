@@ -93,6 +93,44 @@ const amsJsonService = {
     };
   },
 
+  async getCollegeProfile(user) {
+    const db = await LocalDb.read();
+    const college = db.colleges.find((item) => item.userId === user.id);
+    if (!college) throw new ApiError('College profile not found', 404);
+    const interests = db.interests.filter((interest) => interest.collegeId === college.id);
+    return {
+      id: college.id,
+      collegeName: college.collegeName || '',
+      email: college.email || '',
+      status: college.status || '',
+      logoUrl: null,
+      coverBannerUrl: null,
+      courses: [],
+      achievements: [],
+      location: { country: '', state: '', city: '', pincode: '', fullAddress: '' },
+      contact: { emailAddress: college.email || '', admissionMobileNumber: '', officeMobileNumber: '', websiteUrl: '' },
+      placements: { placementPercentage: null, highestPackage: '', averagePackage: '' },
+      about: { summaryDescription: '', visionStatement: '', missionStatement: '', principalMessage: '' },
+      dashboard: {
+        totalStudentViews: 0,
+        totalEnquiries: 0,
+        totalInterestedStudents: interests.length,
+        profileCompletionPercentage: college.collegeName ? 40 : 0,
+      },
+    };
+  },
+
+  async updateCollegeProfile(user, data = {}) {
+    const db = await LocalDb.read();
+    const college = db.colleges.find((item) => item.userId === user.id);
+    if (!college) throw new ApiError('College profile not found', 404);
+    await this.updateCollege(college.id, {
+      collegeName: data.collegeName,
+      email: data.email ?? data.contact?.emailAddress,
+    });
+    return this.getCollegeProfile(user);
+  },
+
   async getCollegeDashboard(user) {
     const db = await LocalDb.read();
     const college = db.colleges.find((item) => item.userId === user.id);
@@ -175,8 +213,21 @@ const amsJsonService = {
     const db = await LocalDb.read();
     const college = db.colleges.find((item) => item.id === id);
     if (!college) throw new ApiError('College not found', 404);
+    const nextEmail = data.email !== undefined ? data.email.trim().toLowerCase() : college.email;
+    if (nextEmail !== college.email) {
+      const duplicateUser = db.users.find((user) => user.email === nextEmail && user.id !== college.userId);
+      const duplicateCollege = db.colleges.find((item) => item.email === nextEmail && item.id !== id);
+      if (duplicateUser || duplicateCollege) throw new ApiError('Email already registered', 409);
+    }
     if (data.collegeName !== undefined) college.collegeName = data.collegeName;
+    if (data.email !== undefined) college.email = nextEmail;
     if (data.status !== undefined) college.status = data.status;
+    const user = db.users.find((item) => item.id === college.userId);
+    if (user) {
+      if (data.collegeName !== undefined) user.name = data.collegeName;
+      if (data.email !== undefined) user.email = nextEmail;
+      if (data.password) user.password = await bcrypt.hash(data.password, 12);
+    }
     LocalDb.addActivity(db, `College updated: ${college.collegeName}`);
     await LocalDb.write(db);
     return college;

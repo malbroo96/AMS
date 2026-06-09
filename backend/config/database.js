@@ -26,4 +26,3 @@ const dbConfig = {
     min: 2,
     idleTimeoutMillis: 30000,
   },
-};

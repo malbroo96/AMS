@@ -4,6 +4,75 @@ const ApiError = require('../utils/ApiError');
 const UserModel = require('../models/userStore');
 const { mapAmsStudentRow, mapAmsCollegeRow } = require('../utils/mappers');
 const AmsActivity = require('../models/AmsActivity.model');
+const CollegeAssetModel = require('../models/CollegeAsset.model');
+
+function buildCollegeProfilePayload(college, assets, stats = {}) {
+  const logoUrl = assets?.logoUrl || null;
+  const coverBannerUrl = assets?.bannerUrl || null;
+  const profile = {
+    id: college.id,
+    collegeName: college.collegeName || '',
+    shortName: '',
+    establishmentYear: null,
+    collegeType: '',
+    universityAffiliation: '',
+    naacGrade: '',
+    aicteApproval: false,
+    ugcRecognition: false,
+    email: college.email || '',
+    status: college.status || '',
+    logoUrl,
+    coverBannerUrl,
+    prospectusUrl: null,
+    location: {
+      country: '',
+      state: '',
+      city: college.city || '',
+      pincode: '',
+      fullAddress: '',
+    },
+    contact: {
+      emailAddress: college.email || '',
+      admissionMobileNumber: '',
+      officeMobileNumber: '',
+      websiteUrl: '',
+    },
+    placements: {
+      placementPercentage: null,
+      highestPackage: '',
+      averagePackage: '',
+      topRecruiters: [],
+    },
+    about: {
+      summaryDescription: '',
+      visionStatement: '',
+      missionStatement: '',
+      principalMessage: '',
+    },
+    facilities: [],
+    courses: [],
+    achievements: [],
+  };
+
+  const completionFields = [
+    profile.collegeName,
+    profile.contact.emailAddress,
+    logoUrl,
+    coverBannerUrl,
+    profile.about.summaryDescription,
+  ];
+  const filled = completionFields.filter(Boolean).length;
+
+  return {
+    ...profile,
+    dashboard: {
+      totalStudentViews: 0,
+      totalEnquiries: 0,
+      totalInterestedStudents: stats.interestedStudents ?? 0,
+      profileCompletionPercentage: Math.round((filled / completionFields.length) * 100),
+    },
+  };
+}
 
 async function getRoleId(pool, roleName) {
   const r = await pool
@@ -183,6 +252,43 @@ const amsSqlService = {
       },
       interests,
     };
+  },
+
+  async getCollegeProfile(user) {
+    const pool = await getPool();
+    const col = await pool
+      .request()
+      .input('userId', sql.Int, user.id)
+      .query('SELECT * FROM Colleges WHERE UserID = @userId');
+    const collegeRow = col.recordset[0];
+    if (!collegeRow) throw new ApiError('College profile not found', 404);
+
+    const college = mapAmsCollegeRow(collegeRow);
+    const assets = await CollegeAssetModel.getByCollegeId(collegeRow.CollegeID);
+    const apps = await pool
+      .request()
+      .input('cid', sql.Int, collegeRow.CollegeID)
+      .query('SELECT COUNT(*) AS n FROM StudentApplications WHERE CollegeID = @cid');
+
+    return buildCollegeProfilePayload(college, assets, {
+      interestedStudents: apps.recordset[0]?.n ?? 0,
+    });
+  },
+
+  async updateCollegeProfile(user, data = {}) {
+    const pool = await getPool();
+    const col = await pool
+      .request()
+      .input('userId', sql.Int, user.id)
+      .query('SELECT * FROM Colleges WHERE UserID = @userId');
+    const collegeRow = col.recordset[0];
+    if (!collegeRow) throw new ApiError('College profile not found', 404);
+
+    await this.updateCollege(collegeRow.CollegeID, {
+      collegeName: data.collegeName,
+      email: data.email ?? data.contact?.emailAddress,
+    });
+    return this.getCollegeProfile(user);
   },
 
   async getCollegeDashboard(user) {
@@ -563,24 +669,46 @@ const amsSqlService = {
     const row = cur.recordset[0];
     if (!row) throw new ApiError('College not found', 404);
 
-    if (data.collegeName !== undefined) {
-      await pool
+    const nextEmail = data.email !== undefined ? data.email.trim().toLowerCase() : row.Email;
+    if (nextEmail.toLowerCase() !== String(row.Email).toLowerCase()) {
+      const duplicate = await pool
         .request()
-        .input('id', sql.Int, id)
-        .input('cn', sql.VarChar(150), data.collegeName)
-        .query('UPDATE Colleges SET CollegeName = @cn WHERE CollegeID = @id');
-      await pool
-        .request()
-        .input('uid', sql.Int, row.UserID)
-        .input('fn', sql.NVarChar(150), data.collegeName)
-        .query('UPDATE Users SET FullName = @fn WHERE UserID = @uid');
+        .input('email', sql.VarChar(255), nextEmail)
+        .input('userId', sql.Int, row.UserID)
+        .query('SELECT UserID FROM Users WHERE LOWER(Email) = LOWER(@email) AND UserID <> @userId');
+      if (duplicate.recordset[0]) throw new ApiError('Email already registered', 409);
     }
-    if (data.status !== undefined) {
-      await pool
-        .request()
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    try {
+      const collegeReq = new sql.Request(transaction)
         .input('id', sql.Int, id)
-        .input('st', sql.VarChar(20), data.status)
-        .query('UPDATE Colleges SET Status = @st WHERE CollegeID = @id');
+        .input('collegeName', sql.VarChar(150), data.collegeName ?? row.CollegeName)
+        .input('email', sql.VarChar(255), nextEmail)
+        .input('status', sql.VarChar(20), data.status ?? row.Status);
+      await collegeReq.query(`
+        UPDATE Colleges
+        SET CollegeName = @collegeName, Email = @email, Status = @status
+        WHERE CollegeID = @id
+      `);
+
+      const userReq = new sql.Request(transaction)
+        .input('uid', sql.Int, row.UserID)
+        .input('fullName', sql.NVarChar(150), data.collegeName ?? row.CollegeName)
+        .input('email', sql.VarChar(255), nextEmail);
+      let userSql = 'UPDATE Users SET FullName = @fullName, Email = @email';
+      if (data.password) {
+        userReq.input('password', sql.NVarChar(255), await bcrypt.hash(data.password, 12));
+        userSql += ', Password = @password';
+      }
+      userSql += ' WHERE UserID = @uid';
+      await userReq.query(userSql);
+
+      await transaction.commit();
+    } catch (e) {
+      await transaction.rollback();
+      throw e;
     }
 
     await addActivity(`College updated: ${data.collegeName ?? row.CollegeName}`);
