@@ -483,10 +483,19 @@ const collegePortalSqlService = {
 
   async listPublic(query = {}) {
     await ensureTables();
+    await CollegeAssetModel.ensureTable();
     const pool = await getPool();
     const req = pool.request();
-    const clauses = ["c.Status = 'approved'"];
+    const clauses = ["LOWER(c.Status) = 'approved'"];
     const search = String(query.search || '').trim().toLowerCase();
+    const cityValues = String(query.cities || query.city || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const courseValues = String(query.courses || query.course || '')
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
     if (search) {
       clauses.push('(LOWER(c.CollegeName) LIKE @search OR LOWER(p.City) LIKE @search OR LOWER(p.State) LIKE @search)');
       req.input('search', sql.NVarChar(255), `%${search}%`);
@@ -495,17 +504,53 @@ const collegePortalSqlService = {
       clauses.push('p.State = @state');
       req.input('state', sql.NVarChar(100), query.state);
     }
-    if (query.city) {
-      clauses.push('p.City = @city');
-      req.input('city', sql.NVarChar(100), query.city);
+    if (cityValues.length) {
+      const cityParams = cityValues.map((value, index) => {
+        const param = `city${index}`;
+        req.input(param, sql.NVarChar(100), value);
+        return `@${param}`;
+      });
+      clauses.push(`p.City IN (${cityParams.join(', ')})`);
     }
     if (query.collegeType) {
       clauses.push('p.CollegeType = @collegeType');
       req.input('collegeType', sql.NVarChar(50), query.collegeType);
     }
-    if (query.maxFee) {
-      clauses.push('EXISTS (SELECT 1 FROM dbo.CollegeCourses cc WHERE cc.CollegeID = c.CollegeID AND cc.IsActive = 1 AND cc.AnnualFee <= @maxFee)');
-      req.input('maxFee', sql.Decimal(12, 2), Number(query.maxFee));
+    const maxFee = Number(query.maxFee);
+    if (Number.isFinite(maxFee)) {
+      clauses.push(`(
+        EXISTS (
+          SELECT 1
+          FROM dbo.CollegeCourses cc
+          WHERE cc.CollegeID = c.CollegeID
+            AND cc.IsActive = 1
+            AND cc.AnnualFee <= @maxFee
+        )
+        OR NOT EXISTS (
+          SELECT 1
+          FROM dbo.CollegeCourses cc
+          WHERE cc.CollegeID = c.CollegeID
+            AND cc.IsActive = 1
+            AND cc.AnnualFee IS NOT NULL
+        )
+      )`);
+      req.input('maxFee', sql.Decimal(12, 2), maxFee);
+    }
+    if (courseValues.length) {
+      const courseClauses = courseValues.map((value, index) => {
+        const param = `course${index}`;
+        req.input(param, sql.NVarChar(255), `%${value}%`);
+        return `(LOWER(cc.CourseName) LIKE @${param} OR LOWER(cc.CourseCategory) LIKE @${param} OR LOWER(cc.DegreeType) LIKE @${param})`;
+      });
+      clauses.push(`
+        EXISTS (
+          SELECT 1
+          FROM dbo.CollegeCourses cc
+          WHERE cc.CollegeID = c.CollegeID
+            AND cc.IsActive = 1
+            AND (${courseClauses.join(' OR ')})
+        )
+      `);
     }
     const result = await req.query(`
       SELECT c.CollegeID, c.CollegeName, c.Email, c.Status, p.*, a.LogoUrl, a.BannerUrl,
@@ -518,8 +563,35 @@ const collegePortalSqlService = {
       WHERE ${clauses.join(' AND ')}
       ORDER BY c.CollegeName
     `);
+    const collegeIds = result.recordset.map((row) => Number(row.CollegeID)).filter(Number.isFinite);
+    let coursesByCollegeId = new Map();
+
+    if (collegeIds.length) {
+      const courseReq = pool.request();
+      const idParams = collegeIds.map((id, index) => {
+        const param = `collegeId${index}`;
+        courseReq.input(param, sql.Int, id);
+        return `@${param}`;
+      });
+      const courseResult = await courseReq.query(`
+        SELECT *
+        FROM dbo.CollegeCourses
+        WHERE IsActive = 1 AND CollegeID IN (${idParams.join(', ')})
+        ORDER BY CourseName
+      `);
+
+      coursesByCollegeId = courseResult.recordset.reduce((groups, row) => {
+        const key = String(row.CollegeID);
+        const next = groups.get(key) || [];
+        next.push(mapCourse(row));
+        groups.set(key, next);
+        return groups;
+      }, new Map());
+    }
+
     return result.recordset.map((row) => ({
       ...baseProfile(row, { logoUrl: row.LogoUrl, bannerUrl: row.BannerUrl }),
+      courses: coursesByCollegeId.get(String(row.CollegeID)) || [],
       feesFrom: row.FeesFrom != null ? Number(row.FeesFrom) : null,
       courseCount: Number(row.CourseCount || 0),
     }));

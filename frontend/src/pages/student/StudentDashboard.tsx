@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getStudentDashboard, searchCollegeProfiles } from '../../api/ams';
+import { getStudentDashboard, markCollegeInterest, searchCollegeProfiles } from '../../api/ams';
 import {
   CollegeFilters,
   defaultCollegeFilters,
@@ -10,11 +10,10 @@ import { CollegeSearch, type CollegeSearchValues } from '../../components/studen
 import { StudentCollegeGrid } from '../../components/student/StudentCollegeGrid';
 import { Navbar } from '../../components/studentPortal/Navbar';
 import { badge, button, shell } from '../../components/ui/designTokens';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { mapProfileToExplorerCollege, type CollegeExplorerItem } from '../../types/collegeExplorer';
-import type { Interest, StudentProfile } from '../../types';
-
-const SAVED_COLLEGES_KEY = 'ams-saved-colleges';
+import type { Interest, StudentProfile, User } from '../../types';
 
 const initialSearch: CollegeSearchValues = {
   collegeName: '',
@@ -22,33 +21,69 @@ const initialSearch: CollegeSearchValues = {
   city: '',
 };
 
-function loadSavedCollegeIds(): Set<string> {
-  try {
-    const stored = localStorage.getItem(SAVED_COLLEGES_KEY);
-    if (!stored) return new Set();
-    const ids = JSON.parse(stored) as string[];
-    return new Set(Array.isArray(ids) ? ids : []);
-  } catch {
-    return new Set();
-  }
+function profileFromUser(user: User | null): StudentProfile | null {
+  if (!user) return null;
+  if (user.student) return user.student;
+
+  return {
+    id: user.id,
+    userId: user.id,
+    name: user.name,
+    email: user.email,
+    mobile: user.phone ?? null,
+    education: null,
+  };
 }
 
-function persistSavedCollegeIds(ids: Set<string>) {
-  localStorage.setItem(SAVED_COLLEGES_KEY, JSON.stringify([...ids]));
+function normalizeSearch(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function collegeSearchText(college: CollegeExplorerItem) {
+  return normalizeSearch([
+    college.name,
+    college.city,
+    college.location,
+    ...college.courses,
+    ...college.highlights,
+  ].join(' '));
+}
+
+function buildCollegeSearchParams(searchValues: CollegeSearchValues, filters: CollegeFiltersState) {
+  const params: Record<string, string | number> = {};
+  const collegeName = searchValues.collegeName.trim();
+  const course = searchValues.course.trim();
+  const city = searchValues.city.trim();
+
+  if (collegeName) params.search = collegeName;
+  if (course || filters.courses.length) {
+    params.courses = [...filters.courses, course].filter(Boolean).join(',');
+  }
+  if (city || filters.locations.length) {
+    params.cities = [...filters.locations, city].filter(Boolean).join(',');
+  }
+  if (filters.maxFees) params.maxFee = filters.maxFees;
+
+  return params;
 }
 
 export function StudentDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [searchValues, setSearchValues] = useState<CollegeSearchValues>(initialSearch);
   const [filters, setFilters] = useState<CollegeFiltersState>(defaultCollegeFilters);
-  const [student, setStudent] = useState<StudentProfile | null>(null);
+  const [student, setStudent] = useState<StudentProfile | null>(() => profileFromUser(user));
   const [interests, setInterests] = useState<Interest[]>([]);
   const [stats, setStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [colleges, setColleges] = useState<CollegeExplorerItem[]>([]);
   const [selectedCollegeId, setSelectedCollegeId] = useState<string | null>(null);
-  const [savedCollegeIds, setSavedCollegeIds] = useState<Set<string>>(() => loadSavedCollegeIds());
+
+  const savedCollegeIds = useMemo(
+    () => new Set(interests.map((interest) => interest.collegeId)),
+    [interests]
+  );
 
   const locationOptions = useMemo(
     () => [...new Set(colleges.map((college) => college.city).filter(Boolean))].sort(),
@@ -64,17 +99,17 @@ export function StudentDashboard() {
   );
 
   const filteredColleges = useMemo(() => {
-    const collegeName = searchValues.collegeName.trim().toLowerCase();
-    const course = searchValues.course.trim().toLowerCase();
-    const city = searchValues.city.trim().toLowerCase();
+    const collegeName = normalizeSearch(searchValues.collegeName);
+    const course = normalizeSearch(searchValues.course);
+    const city = normalizeSearch(searchValues.city);
 
     return colleges.filter((college) => {
-      const matchesName = !collegeName || college.name.toLowerCase().includes(collegeName);
+      const matchesName = !collegeName || collegeSearchText(college).includes(collegeName);
       const matchesCourse =
-        (!course || college.courses.some((item) => item.toLowerCase().includes(course))) &&
+        (!course || college.courses.some((item) => normalizeSearch(item).includes(course))) &&
         (filters.courses.length === 0 || college.courses.some((item) => filters.courses.includes(item)));
       const matchesCity =
-        (!city || college.city.toLowerCase().includes(city)) &&
+        (!city || normalizeSearch(`${college.city} ${college.location}`).includes(city)) &&
         (filters.locations.length === 0 || filters.locations.includes(college.city));
       const matchesRating = college.rating >= filters.minRating;
       const matchesFees = college.feesFrom <= filters.maxFees;
@@ -101,44 +136,79 @@ export function StudentDashboard() {
   useEffect(() => {
     let active = true;
 
-    Promise.all([getStudentDashboard(), searchCollegeProfiles()])
-      .then(([dashboardRes, collegesRes]) => {
+    getStudentDashboard()
+      .then((response) => {
         if (!active) return;
-        const nextColleges = collegesRes.data.data.map(mapProfileToExplorerCollege);
-        setColleges(nextColleges);
-        setSelectedCollegeId((current) => current ?? nextColleges[0]?.id ?? null);
-        setStudent(dashboardRes.data.data.student);
-        setInterests(dashboardRes.data.data.interests);
-        setStats(dashboardRes.data.data.stats);
+        setStudent(response.data.data.student);
+        setInterests(response.data.data.interests);
+        setStats(response.data.data.stats);
       })
-      .catch(() => showToast('Unable to load student dashboard', 'error'))
-      .finally(() => {
-        if (active) setLoading(false);
+      .catch(() => {
+        if (!active) return;
+        const fallbackStudent = profileFromUser(user);
+        if (fallbackStudent) setStudent(fallbackStudent);
+        showToast('Unable to load live student details. Showing saved profile details.', 'error');
       });
 
     return () => {
       active = false;
     };
-  }, [showToast]);
+  }, [showToast, user]);
+
+  useEffect(() => {
+    let active = true;
+    const handle = window.setTimeout(() => {
+      setLoading(true);
+
+      searchCollegeProfiles(buildCollegeSearchParams(searchValues, filters))
+        .then((response) => {
+          if (!active) return;
+          const liveColleges = response.data.data.map((profile, index) => mapProfileToExplorerCollege(profile, index));
+          const nextColleges = liveColleges;
+
+          setColleges(nextColleges);
+          setSelectedCollegeId((current) => current ?? nextColleges[0]?.id ?? null);
+        })
+        .catch(() => {
+          if (!active) return;
+          setColleges([]);
+          showToast('Unable to load live approved colleges from SQL.', 'error');
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(handle);
+    };
+  }, [filters, searchValues, showToast]);
 
   const resetExplorer = () => {
     setSearchValues(initialSearch);
     setFilters(defaultCollegeFilters);
   };
 
-  const handleSaveCollege = (collegeId: string) => {
-    setSavedCollegeIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(collegeId)) {
-        next.delete(collegeId);
-        showToast('College removed from saved list', 'success');
-      } else {
-        next.add(collegeId);
-        showToast('College saved successfully', 'success');
-      }
-      persistSavedCollegeIds(next);
-      return next;
-    });
+  const handleSaveCollege = async (collegeId: string) => {
+    if (savedCollegeIds.has(collegeId)) {
+      showToast('College is already saved in SQL', 'success');
+      return;
+    }
+
+    try {
+      const response = await markCollegeInterest(collegeId);
+      setStudent(response.data.data.student);
+      setInterests(response.data.data.interests);
+      setStats(response.data.data.stats);
+      showToast('College saved in SQL successfully', 'success');
+    } catch (error: unknown) {
+      showToast(
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Unable to save college in SQL',
+        'error'
+      );
+    }
   };
 
   const handleApplyNow = (collegeId: string) => {
