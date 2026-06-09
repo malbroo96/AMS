@@ -1,5 +1,5 @@
 /**
- * One-time import: backend/data/ams-local-db.json → MSSQL AMS tables.
+ * One-time import: backend/data/ams-local-db.json -> MSSQL AMS tables.
  * Usage: npm run db:migrate-json
  * Requires .env with DB_* and schema from ams-schema.sql already applied.
  */
@@ -30,107 +30,213 @@ function parseDob(val) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-async function main() {
-  const sourcePath = resolveJsonFile();
-  if (!sourcePath) {
-    console.log('No ams-local-db.json or .migrated.bak to import.');
-    process.exit(0);
-  }
+function dobIsoDate(val) {
+  const d = parseDob(val);
+  if (!d) return null;
+  return d.toISOString().slice(0, 10);
+}
 
-  const db = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
-  const pool = await getPool();
+async function upsertUser(pool, roleIds, u, userMap) {
+  const rid = roleIds[u.role] || roleIds.student;
+  const email = String(u.email || '').trim().toLowerCase();
+  if (!email) return;
 
-  const existing = await pool.request().query('SELECT COUNT(*) AS n FROM Users');
-  if (existing.recordset[0].n > 0) {
-    console.log('Users table already has data. Skipping migration (delete rows first if you want to re-import).');
-    process.exit(0);
-  }
+  const existing = await pool
+    .request()
+    .input('email', sql.VarChar(150), email)
+    .query('SELECT UserID FROM Users WHERE LOWER(Email) = LOWER(@email)');
 
-  const roleIds = {
-    admin: await roleId(pool, 'admin'),
-    college: await roleId(pool, 'college'),
-    student: await roleId(pool, 'student'),
-  };
-
-  const userMap = new Map();
-
-  for (const u of db.users || []) {
-    const rid = roleIds[u.role] || roleIds.student;
+  let userId = existing.recordset[0]?.UserID;
+  if (userId) {
+    await pool
+      .request()
+      .input('id', sql.Int, userId)
+      .input('rid', sql.Int, rid)
+      .input('pw', sql.VarChar(255), u.password)
+      .input('name', sql.VarChar(150), u.name || '')
+      .input('phone', sql.VarChar(20), u.phone || null)
+      .input('approved', sql.Bit, u.is_approved ? 1 : 0)
+      .query(`
+        UPDATE Users
+        SET RoleID = @rid, Password = @pw, FullName = @name, Phone = @phone, IsApproved = @approved
+        WHERE UserID = @id
+      `);
+  } else {
     const ins = await pool
       .request()
       .input('rid', sql.Int, rid)
-      .input('email', sql.VarChar(255), u.email.trim().toLowerCase())
-      .input('pw', sql.NVarChar(255), u.password)
-      .input('name', sql.NVarChar(150), u.name)
-      .input('phone', sql.NVarChar(30), u.phone || null)
+      .input('email', sql.VarChar(150), email)
+      .input('pw', sql.VarChar(255), u.password)
+      .input('name', sql.VarChar(150), u.name || '')
+      .input('phone', sql.VarChar(20), u.phone || null)
       .input('approved', sql.Bit, u.is_approved ? 1 : 0)
       .query(`
         INSERT INTO Users (RoleID, Email, Password, FullName, Phone, IsApproved)
         OUTPUT inserted.UserID
         VALUES (@rid, @email, @pw, @name, @phone, @approved)
       `);
-    userMap.set(u.id, ins.recordset[0].UserID);
-    console.log('User:', u.email, '→ UserID', ins.recordset[0].UserID);
+    userId = ins.recordset[0].UserID;
   }
 
-  const studentMap = new Map();
+  userMap.set(u.id, userId);
+  console.log('User:', email, '-> UserID', userId);
+}
 
-  for (const s of db.students || []) {
-    const uid = userMap.get(s.userId);
-    if (!uid) {
-      console.warn('Skip student (no user):', s.email);
-      continue;
-    }
-    const ins = await pool
+async function upsertCollege(pool, c, userMap, collegeMap) {
+  const uid = userMap.get(c.userId);
+  if (!uid) {
+    console.warn('Skip college (no user):', c.collegeName);
+    return;
+  }
+  const adminUid = c.createdByAdmin ? userMap.get(c.createdByAdmin) : null;
+  const email = String(c.email || '').trim().toLowerCase();
+
+  const existing = await pool
+    .request()
+    .input('uid', sql.Int, uid)
+    .input('email', sql.VarChar(150), email)
+    .query('SELECT TOP 1 CollegeID FROM Colleges WHERE UserID = @uid OR LOWER(Email) = LOWER(@email)');
+
+  let collegeId = existing.recordset[0]?.CollegeID;
+  if (collegeId) {
+    await pool
       .request()
+      .input('id', sql.Int, collegeId)
+      .input('cn', sql.VarChar(150), c.collegeName || '')
+      .input('email', sql.VarChar(150), email)
       .input('uid', sql.Int, uid)
-      .input('name', sql.NVarChar(150), s.name)
-      .input('address', sql.NVarChar(500), s.address || '')
-      .input('mobile', sql.NVarChar(30), s.mobile || '')
-      .input('email', sql.NVarChar(255), s.email)
-      .input('gender', sql.NVarChar(20), s.gender || '')
-      .input('dob', sql.Date, parseDob(s.dateOfBirth))
-      .input('education', sql.NVarChar(150), s.education || '')
-      .input('ic', sql.NVarChar(200), s.interestedCollege || '')
-      .input('pv', sql.Bit, s.profileVisible ? 1 : 0)
+      .input('st', sql.VarChar(50), c.status || 'approved')
+      .input('by', sql.Int, adminUid)
       .query(`
-        INSERT INTO Students (UserID, Name, Address, Mobile, Email, Gender, DateOfBirth, Education, InterestedCollege, ProfileVisible)
-        OUTPUT inserted.StudentID
-        VALUES (@uid, @name, @address, @mobile, @email, @gender, @dob, @education, @ic, @pv)
+        UPDATE Colleges
+        SET CollegeName = @cn, Email = @email, UserID = @uid, Status = @st, CreatedByAdminUserID = @by
+        WHERE CollegeID = @id
       `);
-    studentMap.set(s.id, ins.recordset[0].StudentID);
-    console.log('Student:', s.name, '→ StudentID', ins.recordset[0].StudentID);
-  }
-
-  const collegeMap = new Map();
-
-  for (const c of db.colleges || []) {
-    const uid = userMap.get(c.userId);
-    if (!uid) {
-      console.warn('Skip college (no user):', c.collegeName);
-      continue;
-    }
-    const adminUid = c.createdByAdmin ? userMap.get(c.createdByAdmin) : null;
+  } else {
     const ins = await pool
       .request()
-      .input('cn', sql.VarChar(150), c.collegeName)
-      .input('email', sql.VarChar(255), c.email.trim().toLowerCase())
+      .input('cn', sql.VarChar(150), c.collegeName || '')
+      .input('email', sql.VarChar(150), email)
       .input('uid', sql.Int, uid)
-      .input('st', sql.VarChar(20), c.status || 'approved')
+      .input('st', sql.VarChar(50), c.status || 'approved')
       .input('by', sql.Int, adminUid)
       .query(`
         INSERT INTO Colleges (CollegeName, Email, UserID, Status, CreatedByAdminUserID)
         OUTPUT inserted.CollegeID
         VALUES (@cn, @email, @uid, @st, @by)
       `);
-    collegeMap.set(c.id, ins.recordset[0].CollegeID);
-    console.log('College:', c.collegeName, '→ CollegeID', ins.recordset[0].CollegeID);
+    collegeId = ins.recordset[0].CollegeID;
   }
 
-  for (const i of db.interests || []) {
-    const sid = studentMap.get(i.studentId);
-    const cid = collegeMap.get(i.collegeId);
-    if (!sid || !cid) continue;
+  collegeMap.set(c.id, collegeId);
+  console.log('College:', c.collegeName, '-> CollegeID', collegeId);
+}
+
+async function upsertStudent(pool, s, userMap, studentMap) {
+  const uid = userMap.get(s.userId);
+  if (!uid) {
+    console.warn('Skip student (no user):', s.email);
+    return;
+  }
+
+  const existing = await pool
+    .request()
+    .input('uid', sql.Int, uid)
+    .query('SELECT TOP 1 StudentID FROM Students WHERE UserID = @uid');
+
+  let studentId = existing.recordset[0]?.StudentID;
+  if (studentId) {
+    await pool
+      .request()
+      .input('id', sql.Int, studentId)
+      .input('name', sql.VarChar(150), s.name || '')
+      .input('address', sql.VarChar(300), s.address || '')
+      .input('mobile', sql.VarChar(20), s.mobile || '')
+      .input('email', sql.VarChar(150), s.email || '')
+      .input('gender', sql.VarChar(20), s.gender || '')
+      .input('dob', sql.VarChar(10), dobIsoDate(s.dateOfBirth))
+      .input('education', sql.VarChar(150), s.education || '')
+      .input('pv', sql.Bit, s.profileVisible ? 1 : 0)
+      .query(`
+        UPDATE Students
+        SET Name = @name, Address = @address, Mobile = @mobile, Email = @email,
+            Gender = @gender, DateOfBirth = CASE WHEN @dob IS NULL THEN NULL ELSE CONVERT(date, @dob, 23) END,
+            Education = @education, ProfileVisible = @pv
+        WHERE StudentID = @id
+      `);
+  } else {
+    const ins = await pool
+      .request()
+      .input('uid', sql.Int, uid)
+      .input('name', sql.VarChar(150), s.name || '')
+      .input('address', sql.VarChar(300), s.address || '')
+      .input('mobile', sql.VarChar(20), s.mobile || '')
+      .input('email', sql.VarChar(150), s.email || '')
+      .input('gender', sql.VarChar(20), s.gender || '')
+      .input('dob', sql.VarChar(10), dobIsoDate(s.dateOfBirth))
+      .input('education', sql.VarChar(150), s.education || '')
+      .input('pv', sql.Bit, s.profileVisible ? 1 : 0)
+      .query(`
+        INSERT INTO Students (UserID, Name, Address, Mobile, Email, Gender, DateOfBirth, Education, InterestedCollege, ProfileVisible)
+        OUTPUT inserted.StudentID
+        VALUES (@uid, @name, @address, @mobile, @email, @gender, CASE WHEN @dob IS NULL THEN NULL ELSE CONVERT(date, @dob, 23) END, @education, NULL, @pv)
+      `);
+    studentId = ins.recordset[0].StudentID;
+  }
+
+  studentMap.set(s.id, studentId);
+  console.log('Student:', s.name, '-> StudentID', studentId);
+}
+
+async function updateStudentInterestedCollege(pool, students, studentMap, collegeMap) {
+  for (const s of students || []) {
+    const sid = studentMap.get(s.id);
+    if (!sid) continue;
+    const interested = s.interestedCollege;
+    if (!interested) continue;
+
+    let targetCollegeId = collegeMap.get(interested);
+    if (!targetCollegeId) {
+      const byName = await pool
+        .request()
+        .input('name', sql.VarChar(150), String(interested))
+        .query('SELECT TOP 1 CollegeID FROM Colleges WHERE LOWER(CollegeName) = LOWER(@name)');
+      targetCollegeId = byName.recordset[0]?.CollegeID;
+    }
+    if (!targetCollegeId) continue;
+
+    await pool
+      .request()
+      .input('sid', sql.Int, sid)
+      .input('cid', sql.Int, targetCollegeId)
+      .query('UPDATE Students SET InterestedCollege = @cid WHERE StudentID = @sid');
+  }
+}
+
+async function upsertInterest(pool, i, studentMap, collegeMap) {
+  const sid = studentMap.get(i.studentId);
+  const cid = collegeMap.get(i.collegeId);
+  if (!sid || !cid) return;
+
+  const exists = await pool
+    .request()
+    .input('sid', sql.Int, sid)
+    .input('cid', sql.Int, cid)
+    .query('SELECT ApplicationID FROM StudentApplications WHERE StudentID = @sid AND CollegeID = @cid');
+
+  if (exists.recordset[0]) {
+    await pool
+      .request()
+      .input('sid', sql.Int, sid)
+      .input('cid', sql.Int, cid)
+      .input('st', sql.NVarChar(30), i.status || 'Interested')
+      .input('ap', sql.Bit, i.approvedByAdmin ? 1 : 0)
+      .query(`
+        UPDATE StudentApplications
+        SET Status = @st, ApprovedByAdmin = @ap
+        WHERE StudentID = @sid AND CollegeID = @cid
+      `);
+  } else {
     await pool
       .request()
       .input('sid', sql.Int, sid)
@@ -141,6 +247,49 @@ async function main() {
         INSERT INTO StudentApplications (StudentID, CollegeID, Status, ApprovedByAdmin)
         VALUES (@sid, @cid, @st, @ap)
       `);
+  }
+}
+
+async function main() {
+  const sourcePath = resolveJsonFile();
+  if (!sourcePath) {
+    console.log('No ams-local-db.json or .migrated.bak to import.');
+    process.exit(0);
+  }
+
+  const db = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
+  const pool = await getPool();
+
+  const roleIds = {
+    admin: await roleId(pool, 'admin'),
+    college: await roleId(pool, 'college'),
+    student: await roleId(pool, 'student'),
+  };
+
+  const userMap = new Map();
+  for (const u of db.users || []) {
+    await upsertUser(pool, roleIds, u, userMap);
+  }
+
+  const collegeMap = new Map();
+  for (const c of db.colleges || []) {
+    await upsertCollege(pool, c, userMap, collegeMap);
+  }
+
+  const studentMap = new Map();
+  for (const s of db.students || []) {
+    try {
+      await upsertStudent(pool, s, userMap, studentMap);
+    } catch (err) {
+      console.error('Student migration error for:', s.email, '-', err.message);
+      throw err;
+    }
+  }
+
+  await updateStudentInterestedCollege(pool, db.students || [], studentMap, collegeMap);
+
+  for (const i of db.interests || []) {
+    await upsertInterest(pool, i, studentMap, collegeMap);
   }
 
   const activities = [...(db.activities || [])].reverse();

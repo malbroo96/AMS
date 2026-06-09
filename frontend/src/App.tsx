@@ -8,9 +8,11 @@ import { LandingPage } from './pages/LandingPage';
 
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage').then((m) => ({ default: m.RegisterPage })));
+const CollegeRegisterPage = lazy(() => import('./pages/auth/CollegeRegisterPage').then((m) => ({ default: m.CollegeRegisterPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard').then((m) => ({ default: m.StudentDashboard })));
+const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then((m) => ({ default: m.StudentProfile })));
 const CollegeDashboard = lazy(() => import('./pages/college/CollegeDashboard').then((m) => ({ default: m.CollegeDashboard })));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 const AdminColleges = lazy(() => import('./pages/admin/AdminColleges').then((m) => ({ default: m.AdminColleges })));
@@ -35,9 +37,11 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/register/college" element={<CollegeRegisterPage />} />
 
               <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                 <Route path="/dashboard/student" element={<StudentDashboard />} />
+                <Route path="/dashboard/student/profile" element={<StudentProfile />} />
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={['college']} />}>

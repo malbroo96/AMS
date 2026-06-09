@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/*
+ * Sidebar theme variables live in index.css (:root).
+ * Component styles: src/components/layout/Sidebar.css
+ */

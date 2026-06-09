@@ -17,6 +17,11 @@ const errorHandler = (err, req, res, next) => {
     message = err.details.map((d) => d.message).join(', ');
   }
 
+  if (err.name === 'MulterError') {
+    statusCode = 400;
+    message = err.code === 'LIMIT_FILE_SIZE' ? 'File size must not exceed 5 MB' : err.message;
+  }
+
   if (process.env.NODE_ENV === 'development' && !err.isOperational) {
     console.error(err);
   }

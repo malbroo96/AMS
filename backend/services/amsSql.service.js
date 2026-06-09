@@ -122,7 +122,7 @@ const amsSqlService = {
     await pool
       .request()
       .input('sid', sql.Int, studentRow.StudentID)
-      .input('ic', sql.NVarChar(200), collegeRow.CollegeName)
+      .input('ic', sql.Int, collegeId)
       .query('UPDATE Students SET InterestedCollege = @ic WHERE StudentID = @sid');
 
     await addActivity(`${studentRow.Name} marked interest in ${collegeRow.CollegeName}`);
@@ -295,6 +295,154 @@ const amsSqlService = {
       );
       return { ...student, interests };
     });
+  },
+
+  async createStudent(data) {
+    const pool = await getPool();
+    const email = data.email.trim().toLowerCase();
+    const existing = await UserModel.findByEmail(email);
+    if (existing) throw new ApiError('Email already registered', 409);
+
+    const password = data.password || 'Student@123';
+    const studentRoleId = await getRoleId(pool, 'student');
+    let dobVal = null;
+    if (data.dateOfBirth) {
+      const d = new Date(data.dateOfBirth);
+      if (!Number.isNaN(d.getTime())) dobVal = d;
+    }
+    const interestedCollegeId = parseInt(String(data.interestedCollege || ''), 10);
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    try {
+      const userOut = await new sql.Request(transaction)
+        .input('roleId', sql.Int, studentRoleId)
+        .input('email', sql.VarChar(255), email)
+        .input('password', sql.NVarChar(255), await bcrypt.hash(password, 12))
+        .input('fullName', sql.NVarChar(150), data.name)
+        .input('phone', sql.NVarChar(30), data.mobile || data.phone || null)
+        .input('isApproved', sql.Bit, 1)
+        .query(`
+          INSERT INTO Users (RoleID, Email, Password, FullName, Phone, IsApproved)
+          OUTPUT inserted.UserID
+          VALUES (@roleId, @email, @password, @fullName, @phone, @isApproved)
+        `);
+
+      const userId = userOut.recordset[0].UserID;
+      const studentOut = await new sql.Request(transaction)
+        .input('userId', sql.Int, userId)
+        .input('name', sql.NVarChar(150), data.name)
+        .input('address', sql.NVarChar(500), data.address || '')
+        .input('mobile', sql.NVarChar(30), data.mobile || data.phone || '')
+        .input('email', sql.NVarChar(255), email)
+        .input('gender', sql.NVarChar(20), data.gender || '')
+        .input('dob', sql.Date, dobVal)
+        .input('education', sql.NVarChar(150), data.education || '')
+        .input('interestedCollege', sql.Int, Number.isFinite(interestedCollegeId) ? interestedCollegeId : null)
+        .query(`
+          INSERT INTO Students (UserID, Name, Address, Mobile, Email, Gender, DateOfBirth, Education, InterestedCollege, ProfileVisible)
+          OUTPUT inserted.*
+          VALUES (@userId, @name, @address, @mobile, @email, @gender, @dob, @education, @interestedCollege, 0)
+        `);
+
+      await transaction.commit();
+      await addActivity(`Admin created student: ${data.name}`);
+      return { student: mapAmsStudentRow(studentOut.recordset[0]), temporaryPassword: password };
+    } catch (e) {
+      await transaction.rollback();
+      throw e;
+    }
+  },
+
+  async updateStudent(idRaw, data) {
+    const pool = await getPool();
+    const id = parseInt(String(idRaw), 10);
+    if (!Number.isFinite(id)) throw new ApiError('Student not found', 404);
+
+    const cur = await pool.request().input('id', sql.Int, id).query('SELECT * FROM Students WHERE StudentID = @id');
+    const row = cur.recordset[0];
+    if (!row) throw new ApiError('Student not found', 404);
+
+    const nextEmail = data.email !== undefined ? data.email.trim().toLowerCase() : row.Email;
+    if (nextEmail !== row.Email.toLowerCase()) {
+      const duplicate = await pool
+        .request()
+        .input('email', sql.VarChar(255), nextEmail)
+        .input('userId', sql.Int, row.UserID)
+        .query('SELECT UserID FROM Users WHERE LOWER(Email) = LOWER(@email) AND UserID <> @userId');
+      if (duplicate.recordset[0]) throw new ApiError('Email already registered', 409);
+    }
+
+    let dobVal = row.DateOfBirth;
+    if (data.dateOfBirth !== undefined) {
+      const d = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
+      dobVal = d && !Number.isNaN(d.getTime()) ? d : null;
+    }
+    const interestedCollegeId =
+      data.interestedCollege !== undefined
+        ? parseInt(String(data.interestedCollege || ''), 10)
+        : row.InterestedCollege;
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    try {
+      const userReq = new sql.Request(transaction)
+        .input('userId', sql.Int, row.UserID)
+        .input('email', sql.VarChar(255), nextEmail)
+        .input('name', sql.NVarChar(150), data.name ?? row.Name)
+        .input('phone', sql.NVarChar(30), data.mobile ?? row.Mobile ?? null);
+
+      let userSql = 'UPDATE Users SET Email = @email, FullName = @name, Phone = @phone';
+      if (data.password) {
+        userReq.input('password', sql.NVarChar(255), await bcrypt.hash(data.password, 12));
+        userSql += ', Password = @password';
+      }
+      userSql += ' WHERE UserID = @userId';
+      await userReq.query(userSql);
+
+      const studentOut = await new sql.Request(transaction)
+        .input('id', sql.Int, id)
+        .input('name', sql.NVarChar(150), data.name ?? row.Name)
+        .input('address', sql.NVarChar(500), data.address ?? row.Address ?? '')
+        .input('mobile', sql.NVarChar(30), data.mobile ?? row.Mobile ?? '')
+        .input('email', sql.NVarChar(255), nextEmail)
+        .input('gender', sql.NVarChar(20), data.gender ?? row.Gender ?? '')
+        .input('dob', sql.Date, dobVal)
+        .input('education', sql.NVarChar(150), data.education ?? row.Education ?? '')
+        .input('interestedCollege', sql.Int, Number.isFinite(interestedCollegeId) ? interestedCollegeId : null)
+        .query(`
+          UPDATE Students
+          SET Name = @name, Address = @address, Mobile = @mobile, Email = @email,
+              Gender = @gender, DateOfBirth = @dob, Education = @education,
+              InterestedCollege = @interestedCollege
+          OUTPUT inserted.*
+          WHERE StudentID = @id
+        `);
+
+      await transaction.commit();
+      await addActivity(`Admin updated student: ${data.name ?? row.Name}`);
+      return mapAmsStudentRow(studentOut.recordset[0]);
+    } catch (e) {
+      await transaction.rollback();
+      throw e;
+    }
+  },
+
+  async deleteStudent(idRaw) {
+    const pool = await getPool();
+    const id = parseInt(String(idRaw), 10);
+    if (!Number.isFinite(id)) throw new ApiError('Student not found', 404);
+
+    const cur = await pool.request().input('id', sql.Int, id).query('SELECT * FROM Students WHERE StudentID = @id');
+    const row = cur.recordset[0];
+    if (!row) throw new ApiError('Student not found', 404);
+
+    await pool.request().input('sid', sql.Int, id).query('DELETE FROM StudentApplications WHERE StudentID = @sid');
+    await pool.request().input('sid', sql.Int, id).query('DELETE FROM Students WHERE StudentID = @sid');
+    await pool.request().input('uid', sql.Int, row.UserID).query('DELETE FROM Users WHERE UserID = @uid');
+
+    await addActivity(`Admin deleted student: ${row.Name}`);
+    return { message: 'Student deleted successfully' };
   },
 
   async adminInterests() {

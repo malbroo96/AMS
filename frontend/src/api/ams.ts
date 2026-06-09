@@ -13,11 +13,57 @@ export const markCollegeInterest = (collegeId: string) =>
 export const getCollegeDashboard = () =>
   api.get<{ success: boolean; data: { college: College; stats: Record<string, number>; students: Array<Record<string, unknown>> } }>('/ams/college/dashboard');
 
+export interface CollegeAssets {
+  collegeId: string;
+  collegeName: string;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  updatedOn: string | null;
+}
+
+export const getCollegeAssets = (collegeId: string) =>
+  api.get<{ success: boolean; data: CollegeAssets }>(`/college/assets/${collegeId}`);
+
+export const uploadCollegeLogo = (file: File, collegeId?: string) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (collegeId) formData.append('collegeId', collegeId);
+  return api.post('/college/upload-logo', formData);
+};
+
+export const uploadCollegeBanner = (file: File, collegeId?: string) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (collegeId) formData.append('collegeId', collegeId);
+  return api.post('/college/upload-banner', formData);
+};
+
+export const deleteCollegeLogo = (collegeId: string) =>
+  api.delete(`/college/delete-logo/${collegeId}`);
+
 export const getAdminDashboard = () =>
   api.get<{ success: boolean; data: Record<string, unknown> }>('/ams/admin/dashboard');
 
 export const getAdminStudents = () =>
   api.get<{ success: boolean; data: StudentProfile[] }>('/ams/admin/students');
+
+export const createStudent = (data: {
+  name: string;
+  email: string;
+  mobile?: string;
+  password?: string;
+  address?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  education?: string;
+  interestedCollege?: string;
+}) => api.post('/ams/admin/students', data);
+
+export const updateStudent = (id: string, data: Partial<StudentProfile> & { password?: string }) =>
+  api.put(`/ams/admin/students/${id}`, data);
+
+export const deleteStudent = (id: string) =>
+  api.delete(`/ams/admin/students/${id}`);
 
 export const getAdminInterests = () =>
   api.get<{ success: boolean; data: Interest[] }>('/ams/admin/interests');

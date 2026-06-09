@@ -17,6 +17,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<UserRole>;
   register: (data: {
     name: string;
+    collegeName?: string;
     email: string;
     phone?: string;
     address?: string;
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (payload: {
     name: string;
+    collegeName?: string;
     email: string;
     phone?: string;
     address?: string;

@@ -11,9 +11,13 @@
     "db:seed": "node database/seed.js",
     "db:ams-schema": "node database/printAmsSchemaHint.js",
     "db:ams-seed-admin": "node database/amsSeedAdmin.js",
-    "db:migrate-json": "node database/migrateJsonToAms.js"
+    "db:migrate-json": "node database/migrateJsonToAms.js",
+    "sharepoint:discover": "node scripts/discoverSharePointIds.js",
+    "sharepoint:update-env": "node scripts/updateSharePointEnv.js"
   },
   "dependencies": {
+    "@azure/msal-node": "^5.2.3",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.6.1",
     "cors": "^2.8.6",
@@ -21,11 +25,14 @@
     "express": "^5.2.1",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
+    "isomorphic-fetch": "^3.0.0",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
+    "msnodesqlv8": "^5.2.0",
     "mssql": "^12.5.3",
-    "multer": "^2.0.0",
+    "multer": "^2.1.1",
+    "sharp": "^0.34.5",
     "uuid": "^11.1.0"
   }
 }

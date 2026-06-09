@@ -98,7 +98,7 @@ const mapAmsStudentRow = (row) => {
     gender: row.Gender ?? '',
     dateOfBirth: row.DateOfBirth,
     education: row.Education ?? '',
-    interestedCollege: row.InterestedCollege ?? '',
+    interestedCollege: row.InterestedCollege != null ? String(row.InterestedCollege) : '',
     profileVisible: !!row.ProfileVisible,
   };
 };
