@@ -631,6 +631,18 @@
     text-align: center;
   }
 
+  .college-logo-name {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 15px;
+  }
+
+  .college-logo-name h1 {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
   .header-actions {
     width: 100%;
     justify-content: center;
@@ -645,7 +657,9 @@
   }
 
   .tabs-navigation {
+    flex-wrap: nowrap;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .modal-content {

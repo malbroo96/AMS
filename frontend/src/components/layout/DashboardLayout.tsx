@@ -44,7 +44,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         onClose={() => setSidebarOpen(false)}
       />
       <div className="flex flex-1 flex-col lg:ml-0">
-        <Navbar />
+        <Navbar onMenuToggle={() => setSidebarOpen((open) => !open)} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>

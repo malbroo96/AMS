@@ -78,6 +78,7 @@ export function StudentDashboard() {
   const [stats, setStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [colleges, setColleges] = useState<CollegeExplorerItem[]>([]);
+  const [allColleges, setAllColleges] = useState<CollegeExplorerItem[]>([]);
   const [selectedCollegeId, setSelectedCollegeId] = useState<string | null>(null);
 
   const savedCollegeIds = useMemo(
@@ -86,16 +87,16 @@ export function StudentDashboard() {
   );
 
   const locationOptions = useMemo(
-    () => [...new Set(colleges.map((college) => college.city).filter(Boolean))].sort(),
-    [colleges]
+    () => [...new Set(allColleges.map((college) => college.city).filter(Boolean))].sort(),
+    [allColleges]
   );
   const courseOptions = useMemo(
-    () => [...new Set(colleges.flatMap((college) => college.courses))].sort(),
-    [colleges]
+    () => [...new Set(allColleges.flatMap((college) => college.courses))].sort(),
+    [allColleges]
   );
   const studyModeOptions = useMemo(
-    () => [...new Set(colleges.flatMap((college) => college.studyModes))].sort(),
-    [colleges]
+    () => [...new Set(allColleges.flatMap((college) => college.studyModes))].sort(),
+    [allColleges]
   );
 
   const filteredColleges = useMemo(() => {
@@ -154,6 +155,22 @@ export function StudentDashboard() {
       active = false;
     };
   }, [showToast, user]);
+
+  useEffect(() => {
+    let active = true;
+    searchCollegeProfiles({})
+      .then((response) => {
+        if (!active) return;
+        const mapped = response.data.data.map((profile, index) => mapProfileToExplorerCollege(profile, index));
+        setAllColleges(mapped);
+      })
+      .catch((err) => {
+        console.error('Failed to load all colleges for filters', err);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
