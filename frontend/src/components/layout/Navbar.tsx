@@ -11,7 +11,7 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
         ? '/dashboard/college'
         : '/dashboard/admin'
     : '/';
-
+             
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
       <div className="flex items-center gap-3">

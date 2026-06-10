@@ -21,3 +21,5 @@ router.put('/courses/:courseId', authMiddleware, roleMiddleware('super_admin', '
 router.delete('/courses/:courseId', authMiddleware, roleMiddleware('super_admin', 'school_admin'), schoolController.deleteCourse);
 
 module.exports = router;
+
+
