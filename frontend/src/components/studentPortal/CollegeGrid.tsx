@@ -1,9 +1,9 @@
-import type { ApprovedCollege } from '../../data/approvedColleges';
+import type { CollegeExplorerItem } from '../../types/collegeExplorer';
 import { shell } from '../ui/designTokens';
 import { CollegeCard } from './CollegeCard';
 
 interface CollegeGridProps {
-  colleges: ApprovedCollege[];
+  colleges: CollegeExplorerItem[];
   selectedCollegeId?: string;
   onSelectCollege: (id: string) => void;
 }

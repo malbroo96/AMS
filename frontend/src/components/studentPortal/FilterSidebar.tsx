@@ -10,12 +10,11 @@ export interface Filters {
 
 interface FilterSidebarProps {
   filters: Filters;
+  locationOptions: string[];
+  courseOptions: string[];
+  studyModeOptions: string[];
   onChange: (filters: Filters) => void;
 }
-
-const locations = ['Bengaluru', 'Mumbai', 'Delhi', 'Pune', 'Hyderabad', 'Chennai'];
-const courses = ['MBA', 'B.Tech', 'B.Com', 'B.Des', 'B.Sc Nursing', 'Business Analytics'];
-const studyModes = ['Full-time', 'Hybrid', 'Online', 'Part-time'];
 
 function toggleValue(items: string[], value: string) {
   return items.includes(value) ? items.filter((item) => item !== value) : [...items, value];
@@ -52,7 +51,7 @@ function FilterGroup({
   );
 }
 
-export function FilterSidebar({ filters, onChange }: FilterSidebarProps) {
+export function FilterSidebar({ filters, locationOptions, courseOptions, studyModeOptions, onChange }: FilterSidebarProps) {
   return (
     <aside id="filters" className={`h-max p-5 lg:sticky lg:top-24 ${shell.card}`}>
       <div className="flex items-center justify-between gap-3">
@@ -72,14 +71,14 @@ export function FilterSidebar({ filters, onChange }: FilterSidebarProps) {
       <div className="mt-5 grid gap-5">
         <FilterGroup
           title="Location"
-          values={locations}
+          values={locationOptions}
           selected={filters.locations}
           onToggle={(value) => onChange({ ...filters, locations: toggleValue(filters.locations, value) })}
         />
 
         <FilterGroup
           title="Course"
-          values={courses}
+          values={courseOptions}
           selected={filters.courses}
           onToggle={(value) => onChange({ ...filters, courses: toggleValue(filters.courses, value) })}
         />
@@ -122,7 +121,7 @@ export function FilterSidebar({ filters, onChange }: FilterSidebarProps) {
 
         <FilterGroup
           title="Study mode"
-          values={studyModes}
+          values={studyModeOptions}
           selected={filters.studyModes}
           onToggle={(value) => onChange({ ...filters, studyModes: toggleValue(filters.studyModes, value) })}
         />

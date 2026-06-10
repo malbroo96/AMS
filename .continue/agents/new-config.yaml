@@ -1,8 +1,0 @@
-name: Local Config
-version: 1.0.0
-schema: v1
-
-models:
-  - name: Qwen Local
-    provider: ollama
-    model: qwen

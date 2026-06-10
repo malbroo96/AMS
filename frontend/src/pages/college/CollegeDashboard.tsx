@@ -146,7 +146,6 @@ export function CollegeDashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-<<<<<<< HEAD
         <div className="rounded-lg bg-green-700 p-6 text-white shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -174,15 +173,6 @@ export function CollegeDashboard() {
               {editMode ? 'Cancel' : 'Edit Profile'}
             </button>
           </div>
-=======
-        <div className={shell.pageHero}>
-          <p className={shell.eyebrow}>College Portal</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">Interested Students</h1>
-        </div>
-
-        <section className={`p-5 ${shell.card}`}>
-          <h2 className="text-lg font-bold text-slate-900">College Details</h2>
->>>>>>> SUMANTH
           <div className="mt-3 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
             {editMode ? (
               <>

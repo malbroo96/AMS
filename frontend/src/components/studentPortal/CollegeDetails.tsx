@@ -1,8 +1,8 @@
-import type { ApprovedCollege } from '../../data/approvedColleges';
+import type { CollegeExplorerItem } from '../../types/collegeExplorer';
 import { badge, button, shell } from '../ui/designTokens';
 
 interface CollegeDetailsProps {
-  college: ApprovedCollege | null;
+  college: CollegeExplorerItem | null;
 }
 
 export function CollegeDetails({ college }: CollegeDetailsProps) {

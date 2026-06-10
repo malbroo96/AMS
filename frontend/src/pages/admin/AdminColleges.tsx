@@ -3,12 +3,12 @@ import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { createCollege, deleteCollege, getColleges, updateCollege } from '../../api/ams';
 import type { College } from '../../types';
 import { useToast } from '../../context/ToastContext';
-import { button, form as formToken, shell, table } from '../../components/ui/designTokens';
+import { form as formToken, shell, table } from '../../components/ui/designTokens';
 
 export function AdminColleges() {
   const { showToast } = useToast();
   const [colleges, setColleges] = useState<College[]>([]);
-  const [form, setForm] = useState({ collegeName: '', email: '', password: '', status: 'pending' });
+  const [form, setForm] = useState({ collegeName: '', email: '', password: '', status: 'approved' });
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const load = () => getColleges({ status: 'all' }).then((res) => setColleges(res.data.data));
@@ -16,7 +16,7 @@ export function AdminColleges() {
 
   const resetForm = () => {
     setEditingId(null);
-    setForm({ collegeName: '', email: '', password: '', status: 'pending' });
+    setForm({ collegeName: '', email: '', password: '', status: 'approved' });
   };
 
   const editCollege = (college: College) => {
@@ -58,27 +58,9 @@ export function AdminColleges() {
         <div className={shell.pageHero}><h1 className="text-2xl font-bold text-slate-900">College Accounts</h1></div>
         <form onSubmit={submit} className={`grid gap-3 p-5 md:grid-cols-4 ${shell.card}`}>
           <input value={form.collegeName} onChange={(e) => setForm({ ...form, collegeName: e.target.value })} required placeholder="College name" className={inputClass} />
-<<<<<<< HEAD
-          <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required placeholder="Email" className={inputClass} />
-          <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editingId ? 'New password optional' : 'Password or default'} className={inputClass} />
-          <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className={inputClass}>
-            <option value="approved">Approved</option><option value="pending">Pending</option><option value="rejected">Rejected</option>
-          </select>
-          <div className="flex gap-2 md:col-span-4">
-            <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white">
-              {editingId ? 'Update College' : 'Create College'}
-            </button>
-            {editingId ? (
-              <button type="button" onClick={resetForm} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">
-                Cancel
-              </button>
-            ) : null}
-          </div>
-=======
           <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required placeholder="Email" className={inputClass} />
           <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password or default" className={inputClass} />
           <button className={button.primary}>Create</button>
->>>>>>> SUMANTH
         </form>
         <section className={`p-5 ${shell.card}`}>
           <table className="w-full text-left text-sm">

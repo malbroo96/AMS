@@ -12,6 +12,55 @@ const visibleCollege = (college) => ({
   createdByAdmin: college.createdByAdmin,
 });
 
+const publicCollegeProfile = (college) => ({
+  id: college.id,
+  collegeName: college.collegeName || '',
+  shortName: '',
+  establishmentYear: null,
+  collegeType: '',
+  universityAffiliation: '',
+  naacGrade: '',
+  aicteApproval: false,
+  ugcRecognition: false,
+  email: college.email || '',
+  status: college.status || '',
+  logoUrl: null,
+  coverBannerUrl: null,
+  prospectusUrl: null,
+  location: {
+    country: '',
+    state: '',
+    city: college.city || '',
+    pincode: '',
+    fullAddress: college.address || '',
+  },
+  contact: {
+    emailAddress: college.email || '',
+    admissionMobileNumber: '',
+    officeMobileNumber: '',
+    websiteUrl: '',
+  },
+  placements: {
+    placementPercentage: null,
+    highestPackage: '',
+    averagePackage: '',
+    topRecruiters: [],
+  },
+  about: {
+    summaryDescription: college.description || '',
+    visionStatement: '',
+    missionStatement: '',
+    principalMessage: '',
+  },
+  facilities: [],
+  courses: [],
+  achievements: [],
+  gallery: [],
+  enquiries: [],
+  feesFrom: null,
+  courseCount: 0,
+});
+
 const publicStudent = (student, interest) => ({
   studentId: student.id,
   status: interest.approvedByAdmin ? 'Approved' : 'Interested',
@@ -44,6 +93,36 @@ const amsJsonService = {
       .filter((college) => (status === 'all' ? true : college.status === status))
       .filter((college) => !search || college.collegeName.toLowerCase().includes(search) || college.email.toLowerCase().includes(search))
       .map(visibleCollege);
+  },
+
+  async searchCollegeProfiles(query = {}) {
+    const db = await LocalDb.read();
+    const search = String(query.search || '').trim().toLowerCase();
+    const state = String(query.state || '').trim().toLowerCase();
+    const city = String(query.city || '').trim().toLowerCase();
+    const collegeType = String(query.collegeType || '').trim().toLowerCase();
+
+    return db.colleges
+      .filter((college) => String(college.status || '').toLowerCase() === 'approved')
+      .filter((college) => {
+        const haystack = [college.collegeName, college.email, college.city, college.address]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (search && !haystack.includes(search)) return false;
+        if (state && String(college.state || '').toLowerCase() !== state) return false;
+        if (city && String(college.city || '').toLowerCase() !== city) return false;
+        if (collegeType && String(college.collegeType || '').toLowerCase() !== collegeType) return false;
+        return true;
+      })
+      .map(publicCollegeProfile);
+  },
+
+  async getPublicCollegeProfile(collegeId) {
+    const db = await LocalDb.read();
+    const college = db.colleges.find((item) => item.id === collegeId && String(item.status || '').toLowerCase() === 'approved');
+    if (!college) throw new ApiError('College profile not found', 404);
+    return publicCollegeProfile(college);
   },
 
   async markInterest(user, collegeId) {
