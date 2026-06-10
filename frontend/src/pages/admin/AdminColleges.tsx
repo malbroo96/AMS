@@ -3,7 +3,7 @@ import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { createCollege, deleteCollege, getColleges, updateCollege } from '../../api/ams';
 import type { College } from '../../types';
 import { useToast } from '../../context/ToastContext';
-import { form as formToken, shell, table } from '../../components/ui/designTokens';
+import { button, form as formToken, shell, table } from '../../components/ui/designTokens';
 
 export function AdminColleges() {
   const { showToast } = useToast();

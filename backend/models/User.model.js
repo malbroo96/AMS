@@ -12,6 +12,8 @@ const UserModel = {
   },
 
   async findById(id) {
+    console.log("Student Profile Update ID:", id);
+    console.log("Type:", typeof id);
     const pool = await getPool();
     const result = await pool
       .request()
@@ -40,6 +42,8 @@ const UserModel = {
   },
 
   async update(id, fields) {
+    console.log("Student Profile Update ID:", id);
+    console.log("Type:", typeof id);
     const pool = await getPool();
     const sets = [];
     const request = pool.request().input('id', sql.UniqueIdentifier, id);

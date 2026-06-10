@@ -94,11 +94,10 @@ export function StudentDashboard() {
     () => [...new Set(allColleges.flatMap((college) => college.courses))].sort(),
     [allColleges]
   );
-  const studyModeOptions = useMemo(
-    () => [...new Set(allColleges.flatMap((college) => college.studyModes))].sort(),
+  const branchOptions = useMemo(
+    () => [...new Set(allColleges.flatMap((college) => college.branches || []))].sort(),
     [allColleges]
   );
-
   const filteredColleges = useMemo(() => {
     const collegeName = normalizeSearch(searchValues.collegeName);
     const course = normalizeSearch(searchValues.course);
@@ -112,13 +111,12 @@ export function StudentDashboard() {
       const matchesCity =
         (!city || normalizeSearch(`${college.city} ${college.location}`).includes(city)) &&
         (filters.locations.length === 0 || filters.locations.includes(college.city));
-      const matchesRating = college.rating >= filters.minRating;
+      const matchesBranch =
+        !filters.branch ||
+        (college.branches && college.branches.includes(filters.branch));
       const matchesFees = college.feesFrom <= filters.maxFees;
-      const matchesStudyMode =
-        filters.studyModes.length === 0 ||
-        college.studyModes.some((mode) => filters.studyModes.includes(mode));
 
-      return matchesName && matchesCourse && matchesCity && matchesRating && matchesFees && matchesStudyMode;
+      return matchesName && matchesCourse && matchesCity && matchesBranch && matchesFees;
     });
   }, [colleges, filters, searchValues]);
 
@@ -297,7 +295,7 @@ export function StudentDashboard() {
             filters={filters}
             locationOptions={locationOptions}
             courseOptions={courseOptions}
-            studyModeOptions={studyModeOptions}
+            branchOptions={branchOptions}
             onChange={setFilters}
             onReset={resetExplorer}
           />

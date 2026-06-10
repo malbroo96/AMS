@@ -328,7 +328,7 @@ async function getProfileRow(collegeId) {
            p.ChairmanMessage, p.PlacementPercentage, p.HighestPackage, p.AveragePackage,
            p.TopRecruiters, p.Facilities, COALESCE(p.TotalStudentViews, 0) AS TotalStudentViews,
            COALESCE(p.TotalEnquiries, 0) AS TotalEnquiries,
-           (SELECT COUNT(*) FROM dbo.StudentApplications sa WHERE sa.CollegeID = c.CollegeID) AS TotalInterestedStudents
+           (SELECT COUNT(*) FROM dbo.Applications sa INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID WHERE cc.CollegeID = c.CollegeID) AS TotalInterestedStudents
     FROM dbo.Colleges c
     LEFT JOIN dbo.CollegeProfiles p ON p.CollegeID = c.CollegeID
     WHERE c.CollegeID = @collegeId
@@ -556,7 +556,7 @@ const collegePortalSqlService = {
       SELECT c.CollegeID, c.CollegeName, c.Email, c.Status, p.*, a.LogoUrl, a.BannerUrl,
              (SELECT MIN(AnnualFee) FROM dbo.CollegeCourses cc WHERE cc.CollegeID = c.CollegeID AND cc.IsActive = 1) AS FeesFrom,
              (SELECT COUNT(*) FROM dbo.CollegeCourses cc WHERE cc.CollegeID = c.CollegeID AND cc.IsActive = 1) AS CourseCount,
-             (SELECT COUNT(*) FROM dbo.StudentApplications sa WHERE sa.CollegeID = c.CollegeID) AS TotalInterestedStudents
+             (SELECT COUNT(*) FROM dbo.Applications sa INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID WHERE cc.CollegeID = c.CollegeID) AS TotalInterestedStudents
       FROM dbo.Colleges c
       LEFT JOIN dbo.CollegeProfiles p ON p.CollegeID = c.CollegeID
       LEFT JOIN dbo.CollegeAssets a ON a.CollegeId = c.CollegeID

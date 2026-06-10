@@ -54,6 +54,7 @@ export interface CollegeProfileData {
     principalMessage?: string;
   };
   courses?: Array<Record<string, unknown>>;
+  branches?: string[];
   achievements?: Array<Record<string, unknown>>;
   gallery?: Array<Record<string, unknown>>;
   enquiries?: Array<Record<string, unknown>>;

@@ -145,43 +145,80 @@ async function upsertStudent(pool, s, userMap, studentMap) {
     .query('SELECT TOP 1 StudentID FROM Students WHERE UserID = @uid');
 
   let studentId = existing.recordset[0]?.StudentID;
-  if (studentId) {
-    await pool
-      .request()
-      .input('id', sql.Int, studentId)
-      .input('name', sql.VarChar(150), s.name || '')
-      .input('address', sql.VarChar(300), s.address || '')
-      .input('mobile', sql.VarChar(20), s.mobile || '')
-      .input('email', sql.VarChar(150), s.email || '')
-      .input('gender', sql.VarChar(20), s.gender || '')
-      .input('dob', sql.VarChar(10), dobIsoDate(s.dateOfBirth))
-      .input('education', sql.VarChar(150), s.education || '')
-      .input('pv', sql.Bit, s.profileVisible ? 1 : 0)
-      .query(`
-        UPDATE Students
-        SET Name = @name, Address = @address, Mobile = @mobile, Email = @email,
-            Gender = @gender, DateOfBirth = CASE WHEN @dob IS NULL THEN NULL ELSE CONVERT(date, @dob, 23) END,
-            Education = @education, ProfileVisible = @pv
-        WHERE StudentID = @id
-      `);
-  } else {
+  if (!studentId) {
     const ins = await pool
       .request()
       .input('uid', sql.Int, uid)
-      .input('name', sql.VarChar(150), s.name || '')
-      .input('address', sql.VarChar(300), s.address || '')
-      .input('mobile', sql.VarChar(20), s.mobile || '')
-      .input('email', sql.VarChar(150), s.email || '')
-      .input('gender', sql.VarChar(20), s.gender || '')
-      .input('dob', sql.VarChar(10), dobIsoDate(s.dateOfBirth))
-      .input('education', sql.VarChar(150), s.education || '')
-      .input('pv', sql.Bit, s.profileVisible ? 1 : 0)
       .query(`
-        INSERT INTO Students (UserID, Name, Address, Mobile, Email, Gender, DateOfBirth, Education, InterestedCollege, ProfileVisible)
+        INSERT INTO Students (UserID)
         OUTPUT inserted.StudentID
-        VALUES (@uid, @name, @address, @mobile, @email, @gender, CASE WHEN @dob IS NULL THEN NULL ELSE CONVERT(date, @dob, 23) END, @education, NULL, @pv)
+        VALUES (@uid)
       `);
     studentId = ins.recordset[0].StudentID;
+  }
+
+  // Parse name into FirstName and LastName
+  const fullName = s.name || '';
+  const parts = fullName.trim().split(/\s+/);
+  const firstName = parts[0] || 'Student';
+  const lastName = parts.slice(1).join(' ') || '';
+
+  const dobVal = dobIsoDate(s.dateOfBirth);
+  
+  // Upsert StudentProfiles
+  const profExists = await pool.request().input('sid', sql.Int, studentId).query('SELECT 1 FROM StudentProfiles WHERE StudentID = @sid');
+  if (profExists.recordset[0]) {
+    await pool.request()
+      .input('sid', sql.Int, studentId)
+      .input('fn', sql.NVarChar(100), firstName)
+      .input('ln', sql.NVarChar(100), lastName)
+      .input('email', sql.NVarChar(255), s.email || null)
+      .input('mobile', sql.NVarChar(30), s.mobile || null)
+      .input('gender', sql.NVarChar(20), s.gender || null)
+      .input('dob', sql.Date, dobVal)
+      .input('address', sql.NVarChar(255), s.address || null)
+      .query(`
+        UPDATE StudentProfiles
+        SET FirstName = @fn, LastName = @ln, Email = @email, Mobile = @mobile,
+            Gender = @gender, DateOfBirth = @dob, AddressLine1 = @address,
+            UpdatedAt = SYSUTCDATETIME()
+        WHERE StudentID = @sid
+      `);
+  } else {
+    await pool.request()
+      .input('sid', sql.Int, studentId)
+      .input('fn', sql.NVarChar(100), firstName)
+      .input('ln', sql.NVarChar(100), lastName)
+      .input('email', sql.NVarChar(255), s.email || null)
+      .input('mobile', sql.NVarChar(30), s.mobile || null)
+      .input('gender', sql.NVarChar(20), s.gender || null)
+      .input('dob', sql.Date, dobVal)
+      .input('address', sql.NVarChar(255), s.address || null)
+      .query(`
+        INSERT INTO StudentProfiles (StudentID, FirstName, LastName, Email, Mobile, Gender, DateOfBirth, AddressLine1, ProfileCompletionPercentage, ProfileStatus)
+        VALUES (@sid, @fn, @ln, @email, @mobile, @gender, @dob, @address, 100, 'Complete')
+      `);
+  }
+
+  // Upsert StudentAcademicDetails
+  const acadExists = await pool.request().input('sid', sql.Int, studentId).query('SELECT 1 FROM StudentAcademicDetails WHERE StudentID = @sid');
+  if (acadExists.recordset[0]) {
+    await pool.request()
+      .input('sid', sql.Int, studentId)
+      .input('qual', sql.NVarChar(100), s.education || null)
+      .query(`
+        UPDATE StudentAcademicDetails
+        SET Qualification = @qual, UpdatedAt = SYSUTCDATETIME()
+        WHERE StudentID = @sid
+      `);
+  } else {
+    await pool.request()
+      .input('sid', sql.Int, studentId)
+      .input('qual', sql.NVarChar(100), s.education || null)
+      .query(`
+        INSERT INTO StudentAcademicDetails (StudentID, Qualification)
+        VALUES (@sid, @qual)
+      `);
   }
 
   studentMap.set(s.id, studentId);
@@ -189,28 +226,8 @@ async function upsertStudent(pool, s, userMap, studentMap) {
 }
 
 async function updateStudentInterestedCollege(pool, students, studentMap, collegeMap) {
-  for (const s of students || []) {
-    const sid = studentMap.get(s.id);
-    if (!sid) continue;
-    const interested = s.interestedCollege;
-    if (!interested) continue;
-
-    let targetCollegeId = collegeMap.get(interested);
-    if (!targetCollegeId) {
-      const byName = await pool
-        .request()
-        .input('name', sql.VarChar(150), String(interested))
-        .query('SELECT TOP 1 CollegeID FROM Colleges WHERE LOWER(CollegeName) = LOWER(@name)');
-      targetCollegeId = byName.recordset[0]?.CollegeID;
-    }
-    if (!targetCollegeId) continue;
-
-    await pool
-      .request()
-      .input('sid', sql.Int, sid)
-      .input('cid', sql.Int, targetCollegeId)
-      .query('UPDATE Students SET InterestedCollege = @cid WHERE StudentID = @sid');
-  }
+  // Bypassed: InterestedCollege column is deprecated in the new schema. 
+  // Student interests are now handled through dbo.Applications in upsertInterest.
 }
 
 async function upsertInterest(pool, i, studentMap, collegeMap) {
@@ -218,34 +235,61 @@ async function upsertInterest(pool, i, studentMap, collegeMap) {
   const cid = collegeMap.get(i.collegeId);
   if (!sid || !cid) return;
 
+  // Resolve CollegeCourseID
+  let courseRes = await pool
+    .request()
+    .input('cid', sql.Int, cid)
+    .query('SELECT TOP 1 CollegeCourseID FROM dbo.CollegeCourses WHERE CollegeID = @cid');
+  let collegeCourseId = courseRes.recordset[0]?.CollegeCourseID;
+  if (!collegeCourseId) {
+    let defaultCourse = await pool.request().query('SELECT TOP 1 CourseID FROM dbo.Courses');
+    let courseId = defaultCourse.recordset[0]?.CourseID;
+    if (!courseId) {
+      let insCourse = await pool.request().query("INSERT INTO dbo.Courses (CourseName, CourseCode) OUTPUT inserted.CourseID VALUES ('General Course', 'GEN')");
+      courseId = insCourse.recordset[0].CourseID;
+    }
+    let defaultBranch = await pool.request().query('SELECT TOP 1 BranchID FROM dbo.Branches');
+    let branchId = defaultBranch.recordset[0]?.BranchID;
+    if (!branchId) {
+      let insBranch = await pool.request().input('cid', sql.Int, courseId).query("INSERT INTO dbo.Branches (CourseID, BranchName, BranchCode) OUTPUT inserted.BranchID VALUES (@cid, 'General Branch', 'GEN')");
+      branchId = insBranch.recordset[0].BranchID;
+    }
+    let insCc = await pool.request()
+      .input('cid', sql.Int, cid)
+      .input('courseId', sql.Int, courseId)
+      .input('branchId', sql.Int, branchId)
+      .query("INSERT INTO dbo.CollegeCourses (CollegeID, CourseID, BranchID, DurationYears, TotalSeats, AnnualFee) OUTPUT inserted.CollegeCourseID VALUES (@cid, @courseId, @branchId, 4.0, 60, 50000.00)");
+    collegeCourseId = insCc.recordset[0].CollegeCourseID;
+  }
+
+  const status = i.approvedByAdmin || i.status === 'Approved' ? 'Approved' : i.status || 'Interested';
+
   const exists = await pool
     .request()
     .input('sid', sql.Int, sid)
-    .input('cid', sql.Int, cid)
-    .query('SELECT ApplicationID FROM StudentApplications WHERE StudentID = @sid AND CollegeID = @cid');
+    .input('ccid', sql.Int, collegeCourseId)
+    .query('SELECT ApplicationID FROM dbo.Applications WHERE StudentID = @sid AND CollegeCourseID = @ccid');
 
   if (exists.recordset[0]) {
     await pool
       .request()
       .input('sid', sql.Int, sid)
-      .input('cid', sql.Int, cid)
-      .input('st', sql.NVarChar(30), i.status || 'Interested')
-      .input('ap', sql.Bit, i.approvedByAdmin ? 1 : 0)
+      .input('ccid', sql.Int, collegeCourseId)
+      .input('st', sql.NVarChar(50), status)
       .query(`
-        UPDATE StudentApplications
-        SET Status = @st, ApprovedByAdmin = @ap
-        WHERE StudentID = @sid AND CollegeID = @cid
+        UPDATE dbo.Applications
+        SET CurrentStatus = @st, UpdatedAt = SYSUTCDATETIME()
+        WHERE StudentID = @sid AND CollegeCourseID = @ccid
       `);
   } else {
     await pool
       .request()
       .input('sid', sql.Int, sid)
-      .input('cid', sql.Int, cid)
-      .input('st', sql.NVarChar(30), i.status || 'Interested')
-      .input('ap', sql.Bit, i.approvedByAdmin ? 1 : 0)
+      .input('ccid', sql.Int, collegeCourseId)
+      .input('st', sql.NVarChar(50), status)
       .query(`
-        INSERT INTO StudentApplications (StudentID, CollegeID, Status, ApprovedByAdmin)
-        VALUES (@sid, @cid, @st, @ap)
+        INSERT INTO dbo.Applications (StudentID, CollegeCourseID, CurrentStatus)
+        VALUES (@sid, @ccid, @st)
       `);
   }
 }

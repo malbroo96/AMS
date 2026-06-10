@@ -8,6 +8,7 @@ export interface CollegeExplorerItem {
   rating: number;
   reviewCount: number;
   courses: string[];
+  branches: string[];
   feesFrom: number;
   studyModes: string[];
   logoTone: string;
@@ -66,6 +67,8 @@ export function mapProfileToExplorerCollege(profile: CollegeProfileData, index =
   const locationParts = [profile.location?.fullAddress, city, profile.location?.state].filter(Boolean);
   const feesFrom = numberValue(extra.feesFrom, Math.min(...courseFees));
 
+  const branches = Array.isArray(profile.branches) ? profile.branches : [];
+
   return {
     id: profile.id,
     name: profile.collegeName || 'College',
@@ -74,6 +77,7 @@ export function mapProfileToExplorerCollege(profile: CollegeProfileData, index =
     rating: numberValue(extra.rating, 4.5),
     reviewCount: numberValue(extra.reviewCount, 0),
     courses,
+    branches,
     feesFrom: Number.isFinite(feesFrom) ? feesFrom : 250000,
     studyModes: studyModes.length ? studyModes : ['Full-time'],
     logoTone: logoTones[index % logoTones.length],
