@@ -1,9 +1,9 @@
-import type { ApprovedCollege } from '../../data/approvedColleges';
+import type { CollegeExplorerItem } from '../../types/collegeExplorer';
 import { shell } from '../ui/designTokens';
 import { StudentCollegeCard } from './StudentCollegeCard';
 
 export interface StudentCollegeGridProps {
-  colleges: ApprovedCollege[];
+  colleges: CollegeExplorerItem[];
   selectedCollegeId?: string | null;
   savedCollegeIds: Set<string>;
   onViewDetails: (id: string) => void;

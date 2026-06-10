@@ -70,7 +70,7 @@ export function CollegeFilters({
   return (
     <aside
       id="filters"
-      className={`h-max p-5 lg:sticky lg:top-24 ${shell.card}`}
+      className={`lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto p-5 ${shell.card}`}
     >
       <div className="flex items-center justify-between gap-3">
         <div>

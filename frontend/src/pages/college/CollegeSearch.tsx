@@ -1,119 +1,103 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { searchColleges, setFilters } from '../../redux/slices/collegeSlice';
+import { searchCollegeProfiles, type CollegeProfileData } from '../../api/ams';
 import './CollegeSearch.css';
 
 interface FilterState {
   state?: string;
   city?: string;
   collegeType?: string;
-  minFee?: number;
-  maxFee?: number;
-  minRating?: number;
-  facilities?: string[];
+  maxFee?: string;
 }
 
-const CollegeSearch: React.FC = () => {
-  const dispatch = useDispatch();
-  const { colleges, loading, error } = useSelector((state: any) => state.colleges);
-  const [filters, setFiltersLocal] = useState<FilterState>({});
-  const [searchQuery, setSearchQuery] = useState('');
+const collegeTypes = ['Government', 'Private', 'Autonomous'];
+const states = ['Andhra Pradesh', 'Karnataka', 'Maharashtra', 'Tamil Nadu', 'Telangana'];
 
-  const collegeTypes = ['Government', 'Private', 'Autonomous'];
-  const naacGrades = ['A++', 'A+', 'A', 'B++', 'B+', 'B', 'C'];
-  const facilitiesList = [
-    'Hostel',
-    'Library',
-    'Sports',
-    'Transportation',
-    'Cafeteria',
-    'WiFi',
-    'Auditorium',
-    'Medical Facility',
-    'Gym',
-    'Placement Cell'
-  ];
+const CollegeSearch: React.FC = () => {
+  const navigate = useNavigate();
+  const [filters, setFilters] = useState<FilterState>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [colleges, setColleges] = useState<CollegeProfileData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Fetch colleges on component mount or filter change
-    const searchParams = {
-      ...filters,
-      search: searchQuery
-    };
-    dispatch(searchColleges(searchParams) as any);
-  }, [filters, searchQuery, dispatch]);
+    const handle = window.setTimeout(async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const response = await searchCollegeProfiles({
+          ...filters,
+          search: searchQuery,
+          maxFee: filters.maxFee || undefined,
+        });
+        setColleges(response.data.data || []);
+      } catch (err: unknown) {
+        setError(
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            'Unable to load colleges'
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
 
-  const handleFilterChange = (key: string, value: any) => {
-    const newFilters = { ...filters, [key]: value };
-    if (!value || (Array.isArray(value) && value.length === 0)) {
-      delete newFilters[key as keyof FilterState];
-    }
-    setFiltersLocal(newFilters);
-    dispatch(setFilters(newFilters));
-  };
+    return () => window.clearTimeout(handle);
+  }, [filters, searchQuery]);
 
-  const handleFacilityToggle = (facility: string) => {
-    const currentFacilities = filters.facilities || [];
-    const newFacilities = currentFacilities.includes(facility)
-      ? currentFacilities.filter(f => f !== facility)
-      : [...currentFacilities, facility];
+  const cities = useMemo(() => {
+    const names = colleges.map((college) => college.location?.city).filter(Boolean) as string[];
+    return Array.from(new Set(names)).sort();
+  }, [colleges]);
 
-    handleFilterChange('facilities', newFacilities);
+  const handleFilterChange = (key: keyof FilterState, value: string) => {
+    setFilters((current) => {
+      const next = { ...current, [key]: value || undefined };
+      if (!value) delete next[key];
+      if (key === 'state') delete next.city;
+      return next;
+    });
   };
 
   return (
     <div className="college-search-container">
-      {/* Search Header */}
       <div className="search-header">
         <h1>Find Your Dream College</h1>
-        <p>Search from thousands of colleges across India</p>
+        <p>Compare verified colleges, courses, fees, placements, and contact details.</p>
       </div>
 
       <div className="search-content">
-        {/* Filters Sidebar */}
         <aside className="filters-sidebar">
           <div className="filter-section">
             <input
               type="text"
-              placeholder="Search by college name"
+              placeholder="Search by college, city, or state"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input"
             />
           </div>
 
-          {/* Location Filters */}
           <div className="filter-section">
             <h3>Location</h3>
-            <select
-              value={filters.state || ''}
-              onChange={(e) => handleFilterChange('state', e.target.value || undefined)}
-              className="filter-select"
-            >
-              <option value="">Select State</option>
-              <option value="Andhra Pradesh">Andhra Pradesh</option>
-              <option value="Maharashtra">Maharashtra</option>
-              <option value="Tamil Nadu">Tamil Nadu</option>
-              <option value="Karnataka">Karnataka</option>
-              {/* Add more states */}
+            <select value={filters.state || ''} onChange={(e) => handleFilterChange('state', e.target.value)} className="filter-select">
+              <option value="">Any State</option>
+              {states.map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
             </select>
-
-            {filters.state && (
-              <select
-                value={filters.city || ''}
-                onChange={(e) => handleFilterChange('city', e.target.value || undefined)}
-                className="filter-select"
-              >
-                <option value="">Select City</option>
-                <option value="Hyderabad">Hyderabad</option>
-                <option value="Bangalore">Bangalore</option>
-                {/* Add more cities */}
-              </select>
-            )}
+            <select value={filters.city || ''} onChange={(e) => handleFilterChange('city', e.target.value)} className="filter-select">
+              <option value="">Any City</option>
+              {cities.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* College Type Filter */}
           <div className="filter-section">
             <h3>College Type</h3>
             {collegeTypes.map((type) => (
@@ -121,100 +105,50 @@ const CollegeSearch: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={filters.collegeType === type}
-                  onChange={(e) =>
-                    handleFilterChange('collegeType', e.target.checked ? type : undefined)
-                  }
+                  onChange={(e) => handleFilterChange('collegeType', e.target.checked ? type : '')}
                 />
                 {type}
               </label>
             ))}
           </div>
 
-          {/* Fee Range Filter */}
           <div className="filter-section">
-            <h3>Annual Fee Range</h3>
-            <div className="fee-range">
-              <input
-                type="number"
-                placeholder="Min"
-                value={filters.minFee || ''}
-                onChange={(e) =>
-                  handleFilterChange('minFee', e.target.value ? parseInt(e.target.value) : undefined)
-                }
-                className="fee-input"
-              />
-              <span>-</span>
-              <input
-                type="number"
-                placeholder="Max"
-                value={filters.maxFee || ''}
-                onChange={(e) =>
-                  handleFilterChange('maxFee', e.target.value ? parseInt(e.target.value) : undefined)
-                }
-                className="fee-input"
-              />
-            </div>
+            <h3>Annual Fee Up To</h3>
+            <input
+              type="number"
+              placeholder="250000"
+              value={filters.maxFee || ''}
+              onChange={(e) => handleFilterChange('maxFee', e.target.value)}
+              className="fee-input"
+            />
           </div>
 
-          {/* Rating Filter */}
-          <div className="filter-section">
-            <h3>Minimum Rating</h3>
-            <select
-              value={filters.minRating || ''}
-              onChange={(e) =>
-                handleFilterChange('minRating', e.target.value ? parseFloat(e.target.value) : undefined)
-              }
-              className="filter-select"
-            >
-              <option value="">Any Rating</option>
-              <option value="4.5">4.5+ Stars</option>
-              <option value="4">4+ Stars</option>
-              <option value="3.5">3.5+ Stars</option>
-              <option value="3">3+ Stars</option>
-            </select>
-          </div>
-
-          {/* Facilities Filter */}
-          <div className="filter-section">
-            <h3>Facilities</h3>
-            <div className="facilities-grid">
-              {facilitiesList.map((facility) => (
-                <label key={facility} className="filter-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={(filters.facilities || []).includes(facility)}
-                    onChange={() => handleFacilityToggle(facility)}
-                  />
-                  {facility}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Reset Filters */}
           <button
             className="reset-filters-btn"
+            type="button"
             onClick={() => {
-              setFiltersLocal({});
+              setFilters({});
               setSearchQuery('');
-              dispatch(setFilters({}));
             }}
           >
             Reset Filters
           </button>
         </aside>
 
-        {/* Results Section */}
         <main className="search-results">
-          {loading && <div className="loading">Loading colleges...</div>}
+          <div className="results-toolbar">
+            <div>
+              <strong>{colleges.length}</strong> colleges found
+            </div>
+            <span>{loading ? 'Refreshing...' : 'Live AMS results'}</span>
+          </div>
+
           {error && <div className="error">{error}</div>}
-          {!loading && colleges.length === 0 && (
-            <div className="no-results">No colleges found. Try adjusting your filters.</div>
-          )}
+          {!loading && colleges.length === 0 && <div className="no-results">No colleges found. Try adjusting your filters.</div>}
 
           <div className="colleges-grid">
-            {colleges.map((college: any) => (
-              <CollegeCard key={college._id} college={college} />
+            {colleges.map((college) => (
+              <CollegeCard key={college.id} college={college} onOpen={() => navigate(`/college/${college.id}`)} />
             ))}
           </div>
         </main>
@@ -223,53 +157,51 @@ const CollegeSearch: React.FC = () => {
   );
 };
 
-// College Card Component
-const CollegeCard: React.FC<{ college: any }> = ({ college }) => {
-  const navigate = useNavigate();
+const CollegeCard: React.FC<{ college: CollegeProfileData & { feesFrom?: number | null; courseCount?: number }; onOpen: () => void }> = ({
+  college,
+  onOpen,
+}) => {
+  const location = [college.location?.city, college.location?.state].filter(Boolean).join(', ') || 'Location pending';
+  const placement = college.placements?.placementPercentage;
 
   return (
-    <div className="college-card">
+    <article className="college-card">
       <div className="college-banner">
-        <img src={college.coverBannerUrl} alt={college.collegeName} />
+        {college.coverBannerUrl ? <img src={college.coverBannerUrl} alt={college.collegeName} /> : <div className="banner-placeholder" />}
       </div>
 
       <div className="college-card-content">
         <div className="college-header">
-          <img src={college.logoUrl} alt="Logo" className="college-logo" />
+          {college.logoUrl ? <img src={college.logoUrl} alt="" className="college-logo" /> : <div className="college-logo logo-placeholder" />}
           <div>
             <h3>{college.collegeName}</h3>
-            <p className="college-location">
-              📍 {college.location.city}, {college.location.state}
-            </p>
+            <p className="college-location">{location}</p>
           </div>
         </div>
 
         <div className="college-stats">
           <div className="stat">
-            <span className="rating">⭐ 4.5</span>
-            <span className="reviews">(1,234 reviews)</span>
+            <span>{college.courseCount ?? 0} courses</span>
           </div>
           <div className="stat">
-            <span>📊 Placement: 85%</span>
+            <span>Placement: {placement != null ? `${placement}%` : 'Not added'}</span>
           </div>
           <div className="stat">
-            <span>💰 Starting: ₹5 LPA</span>
+            <span>Fees from: {college.feesFrom ? `Rs. ${college.feesFrom.toLocaleString('en-IN')}` : 'Ask college'}</span>
           </div>
         </div>
 
         <div className="college-tags">
-          <span className="tag naac">{college.naacGrade}</span>
-          <span className="tag type">{college.collegeType}</span>
+          {college.naacGrade && <span className="tag naac">{college.naacGrade}</span>}
+          {college.collegeType && <span className="tag type">{college.collegeType}</span>}
+          {college.aicteApproval && <span className="tag type">AICTE</span>}
         </div>
 
-        <button
-          className="view-details-btn"
-          onClick={() => navigate(`/college/${college._id}`)}
-        >
-          View Details →
+        <button className="view-details-btn" type="button" onClick={onOpen}>
+          View Details
         </button>
       </div>
-    </div>
+    </article>
   );
 };
 

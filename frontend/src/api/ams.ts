@@ -45,7 +45,7 @@ export interface CollegeProfileData {
     placementPercentage?: number | null;
     highestPackage?: string;
     averagePackage?: string;
-    topRecruiters?: string[];
+    topRecruiters?: Array<string | { recruiterName?: string; recruiterLogoUrl?: string }>;
   };
   about?: {
     summaryDescription?: string;
@@ -55,6 +55,9 @@ export interface CollegeProfileData {
   };
   courses?: Array<Record<string, unknown>>;
   achievements?: Array<Record<string, unknown>>;
+  gallery?: Array<Record<string, unknown>>;
+  enquiries?: Array<Record<string, unknown>>;
+  facilities?: string[];
   dashboard?: {
     totalStudentViews?: number;
     totalEnquiries?: number;
@@ -68,6 +71,57 @@ export const getCollegeProfile = () =>
 
 export const updateCollegeProfile = (data: Partial<CollegeProfileData>) =>
   api.put<{ success: boolean; data: CollegeProfileData }>('/ams/college/profile', data);
+
+export const searchCollegeProfiles = (params?: Record<string, unknown>) =>
+  api.get<{ success: boolean; data: CollegeProfileData[] }>('/ams/college-search', { params });
+
+export const getPublicCollegeProfile = (collegeId: string) =>
+  api.get<{ success: boolean; data: CollegeProfileData }>(`/ams/college-search/${collegeId}`);
+
+export const createCollegeCourse = (data: Record<string, unknown>) =>
+  api.post('/ams/college/profile/courses', data);
+
+export const updateCollegeCourse = (courseId: string, data: Record<string, unknown>) =>
+  api.put(`/ams/college/profile/courses/${courseId}`, data);
+
+export const deleteCollegeCourse = (courseId: string) =>
+  api.delete(`/ams/college/profile/courses/${courseId}`);
+
+export const createCollegeAchievement = (data: Record<string, unknown>) =>
+  api.post('/ams/college/profile/achievements', data);
+
+export const updateCollegeAchievement = (achievementId: string, data: Record<string, unknown>) =>
+  api.put(`/ams/college/profile/achievements/${achievementId}`, data);
+
+export const deleteCollegeAchievement = (achievementId: string) =>
+  api.delete(`/ams/college/profile/achievements/${achievementId}`);
+
+export const createCollegeGalleryImage = (data: Record<string, unknown>, file?: File | null) => {
+  const formData = new FormData();
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) formData.append(key, String(value));
+  });
+  if (file) formData.append('file', file);
+  return api.post('/ams/college/profile/gallery', formData);
+};
+
+export const updateCollegeGalleryImage = (imageId: string, data: Record<string, unknown>, file?: File | null) => {
+  const formData = new FormData();
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) formData.append(key, String(value));
+  });
+  if (file) formData.append('file', file);
+  return api.put(`/ams/college/profile/gallery/${imageId}`, formData);
+};
+
+export const deleteCollegeGalleryImage = (imageId: string) =>
+  api.delete(`/ams/college/profile/gallery/${imageId}`);
+
+export const submitCollegeProfileEnquiry = (collegeId: string, data: Record<string, unknown>) =>
+  api.post(`/ams/college-search/${collegeId}/enquiries`, data);
+
+export const updateCollegeEnquiry = (enquiryId: string, data: Record<string, unknown>) =>
+  api.put(`/ams/college/profile/enquiries/${enquiryId}`, data);
 
 export interface CollegeAssets {
   collegeId: string;
