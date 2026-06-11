@@ -20,3 +20,8 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   const application = await applicationService.updateStatus(req.params.id, req.user, req.body);
   res.json({ success: true, data: application });
 });
+
+exports.getHistory = asyncHandler(async (req, res) => {
+  const history = await applicationService.getStatusHistory(req.params.id, req.user);
+  res.json({ success: true, data: history });
+});

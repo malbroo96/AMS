@@ -51,7 +51,11 @@ function profileCompletion(profile) {
 function mapCourse(row) {
   return {
     id: String(row.CourseID),
+    courseId: row.RealCourseID ? String(row.RealCourseID) : null,
     courseName: row.CourseName || '',
+    branchId: row.BranchID ? String(row.BranchID) : null,
+    branchName: row.BranchName || '',
+    branchCode: row.BranchCode || '',
     courseCategory: '',
     degreeType: '',
     duration: row.Duration != null ? Number(row.Duration) : null,
@@ -163,13 +167,15 @@ async function getProfile(collegeId) {
   const pool = await getPool();
   const [courses, gallery] = await Promise.all([
     pool.request().input('collegeId', sql.Int, collegeId).query(`
-      SELECT cc.CollegeCourseID AS CourseID, cc.CollegeID, c.CourseName, c.CourseCode,
+      SELECT cc.CollegeCourseID AS CourseID, cc.CollegeID, c.CourseID AS RealCourseID, c.CourseName, c.CourseCode,
+             b.BranchID, b.BranchName, b.BranchCode,
              cc.DurationYears AS Duration, cc.TotalSeats, cc.AnnualFee, cc.EligibilityCriteria AS Eligibility,
              cc.IsActive, cc.CreatedAt, cc.UpdatedAt
       FROM dbo.CollegeCourses cc
       INNER JOIN dbo.Courses c ON c.CourseID = cc.CourseID
+      INNER JOIN dbo.Branches b ON b.BranchID = cc.BranchID
       WHERE cc.CollegeID = @collegeId AND cc.IsActive = 1
-      ORDER BY c.CourseName
+      ORDER BY c.CourseName, b.BranchName
     `),
     pool.request().input('collegeId', sql.Int, collegeId).query(`
       SELECT MediaID AS ImageID, CollegeID, SharePointUrl AS ImageUrl, Title AS ImageTitle,
@@ -377,13 +383,15 @@ const collegePortalSqlService = {
         return `@${param}`;
       });
       const courseResult = await courseReq.query(`
-        SELECT cc.CollegeCourseID AS CourseID, cc.CollegeID, c.CourseName, c.CourseCode,
+        SELECT cc.CollegeCourseID AS CourseID, cc.CollegeID, c.CourseID AS RealCourseID, c.CourseName, c.CourseCode,
+               b.BranchID, b.BranchName, b.BranchCode,
                cc.DurationYears AS Duration, cc.TotalSeats, cc.AnnualFee, cc.EligibilityCriteria AS Eligibility,
                cc.IsActive, cc.CreatedAt, cc.UpdatedAt
         FROM dbo.CollegeCourses cc
         INNER JOIN dbo.Courses c ON c.CourseID = cc.CourseID
+        INNER JOIN dbo.Branches b ON b.BranchID = cc.BranchID
         WHERE cc.IsActive = 1 AND cc.CollegeID IN (${idParams.join(', ')})
-        ORDER BY c.CourseName
+        ORDER BY c.CourseName, b.BranchName
       `);
 
       coursesByCollegeId = courseResult.recordset.reduce((groups, row) => {
@@ -413,27 +421,38 @@ const collegePortalSqlService = {
     const fees = data.fees?.annualFee ?? data.annualFee ?? null;
     const seats = data.totalSeats ?? data.seats ?? null;
     const courseName = data.courseName || '';
+    const branchName = data.branchName || '';
+    const duration = data.duration != null ? Number(data.duration) : 4.0;
+    const eligibility = data.eligibility || '';
 
     if (courseIdRaw) {
-      const updated = await CourseModel.update(courseIdRaw, { courseName, fees, seats });
+      const updated = await CourseModel.update(courseIdRaw, { courseName, branchName, duration, fees, seats, eligibility });
       if (!updated) throw new ApiError('Course not found', 404);
       return mapCourse({
         CourseID: updated.id,
+        RealCourseID: updated.RealCourseID,
         CourseName: updated.course_name,
-        Duration: 4.0,
+        BranchID: updated.BranchID,
+        BranchName: updated.BranchName,
+        BranchCode: updated.BranchCode,
+        Duration: updated.duration,
         TotalSeats: updated.seats,
         AnnualFee: updated.fees,
-        Eligibility: ''
+        Eligibility: updated.eligibility
       });
     } else {
-      const created = await CourseModel.create({ schoolId: collegeId, courseName, fees, seats });
+      const created = await CourseModel.create({ schoolId: collegeId, courseName, branchName, duration, fees, seats, eligibility });
       return mapCourse({
         CourseID: created.id,
+        RealCourseID: created.RealCourseID,
         CourseName: created.course_name,
-        Duration: 4.0,
+        BranchID: created.BranchID,
+        BranchName: created.BranchName,
+        BranchCode: created.BranchCode,
+        Duration: created.duration,
         TotalSeats: created.seats,
         AnnualFee: created.fees,
-        Eligibility: ''
+        Eligibility: created.eligibility
       });
     }
   },

@@ -1,12 +1,13 @@
 const { sql, getPool } = require('../config/database');
+const { ApplicationStatus } = require('../config/constants');
 
 function mapStatus(status) {
   if (!status) return null;
   const s = String(status).trim().toLowerCase();
-  if (s === 'pending' || s === 'submitted') return 'Submitted';
-  if (s === 'under_review' || s === 'under review') return 'Under Review';
-  if (s === 'approved') return 'Approved';
-  if (s === 'rejected') return 'Rejected';
+  if (s === 'pending' || s === 'submitted') return ApplicationStatus.SUBMITTED;
+  if (s === 'under_review' || s === 'under review') return ApplicationStatus.UNDER_REVIEW;
+  if (s === 'approved') return ApplicationStatus.APPROVED;
+  if (s === 'rejected') return ApplicationStatus.REJECTED;
   return status;
 }
 
@@ -29,7 +30,9 @@ const ApplicationModel = {
         col.CollegeName AS school_name,
         col.CollegeID AS school_id,
         col.Email AS school_email,
+        col.City AS school_city,
         c.CourseName AS course_name,
+        b.BranchName AS branch_name,
         cc.AnnualFee AS fees,
         st.UserID AS user_id,
         (sp.FirstName + ' ' + sp.LastName) AS student_name,
@@ -43,6 +46,7 @@ const ApplicationModel = {
       INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = a.CollegeCourseID
       INNER JOIN dbo.Colleges col ON col.CollegeID = cc.CollegeID
       INNER JOIN dbo.Courses c ON c.CourseID = cc.CourseID
+      INNER JOIN dbo.Branches b ON b.BranchID = cc.BranchID
       INNER JOIN dbo.Students st ON st.StudentID = a.StudentID
       LEFT JOIN dbo.StudentProfiles sp ON sp.StudentID = st.StudentID
       WHERE a.ApplicationID = @id
@@ -50,37 +54,15 @@ const ApplicationModel = {
     return result.recordset[0] || null;
   },
 
-  async create({ studentId, schoolId, courseId, status = 'pending' }) {
+  async create({ studentId, collegeCourseId, status = 'pending', changedByUserId }) {
     const pool = await getPool();
     const sId = typeof studentId === 'number' ? studentId : parseInt(String(studentId), 10);
-    const colId = typeof schoolId === 'number' ? schoolId : parseInt(String(schoolId), 10);
-    const cId = typeof courseId === 'number' ? courseId : parseInt(String(courseId), 10);
-
-    // Find or create CollegeCourseID
-    const resolved = await pool.request()
-      .input('cid', sql.Int, colId)
-      .input('courseId', sql.Int, cId)
-      .query('SELECT CollegeCourseID FROM dbo.CollegeCourses WHERE CollegeID = @cid AND CourseID = @courseId');
-    let collegeCourseId = resolved.recordset[0]?.CollegeCourseID;
-    if (!collegeCourseId) {
-      let defaultBranch = await pool.request().query('SELECT TOP 1 BranchID FROM dbo.Branches');
-      let branchId = defaultBranch.recordset[0]?.BranchID;
-      if (!branchId) {
-        let insBranch = await pool.request().input('cid', sql.Int, cId).query("INSERT INTO dbo.Branches (CourseID, BranchName, BranchCode) OUTPUT inserted.BranchID VALUES (@cid, 'General Branch', 'GEN')");
-        branchId = insBranch.recordset[0].BranchID;
-      }
-      let insCc = await pool.request()
-        .input('cid', sql.Int, colId)
-        .input('courseId', sql.Int, cId)
-        .input('branchId', sql.Int, branchId)
-        .query("INSERT INTO dbo.CollegeCourses (CollegeID, CourseID, BranchID, DurationYears, TotalSeats, AnnualFee) OUTPUT inserted.CollegeCourseID VALUES (@cid, @courseId, @branchId, 4.0, 60, 50000.00)");
-      collegeCourseId = insCc.recordset[0].CollegeCourseID;
-    }
+    const ccId = typeof collegeCourseId === 'number' ? collegeCourseId : parseInt(String(collegeCourseId), 10);
 
     const ins = await pool
       .request()
       .input('student_id', sql.Int, sId)
-      .input('ccid', sql.Int, collegeCourseId)
+      .input('ccid', sql.Int, ccId)
       .input('status', sql.NVarChar(50), mapStatus(status))
       .query(`
         INSERT INTO dbo.Applications (StudentID, CollegeCourseID, CurrentStatus)
@@ -88,10 +70,27 @@ const ApplicationModel = {
         VALUES (@student_id, @ccid, @status)
       `);
     const appId = ins.recordset[0].ApplicationID;
+
+    // Resolve changedByUserId if not passed
+    let userId = changedByUserId;
+    if (!userId) {
+      const userRes = await pool.request().input('sid', sql.Int, sId).query('SELECT UserID FROM dbo.Students WHERE StudentID = @sid');
+      userId = userRes.recordset[0]?.UserID;
+    }
+
+    if (userId) {
+      await pool.request()
+        .input('appId', sql.Int, appId)
+        .input('status', sql.NVarChar(50), mapStatus(status))
+        .input('remarks', sql.NVarChar(1000), 'Application submitted')
+        .input('userId', sql.Int, userId)
+        .query('INSERT INTO dbo.ApplicationStatusHistory (ApplicationID, Status, Remarks, ChangedByUserID) VALUES (@appId, @status, @remarks, @userId)');
+    }
+
     return this.findById(appId);
   },
 
-  async updateStatus(id, { status, remarks }) {
+  async updateStatus(id, { status, remarks, changedByUserId }) {
     const pool = await getPool();
     const appId = typeof id === 'number' ? id : parseInt(String(id), 10);
     await pool
@@ -100,6 +99,27 @@ const ApplicationModel = {
       .input('status', sql.NVarChar(50), mapStatus(status))
       .input('remarks', sql.NVarChar(sql.MAX), remarks || null)
       .query('UPDATE dbo.Applications SET CurrentStatus = @status, Remarks = @remarks, UpdatedAt = SYSUTCDATETIME() WHERE ApplicationID = @id');
+    
+    // Resolve changedByUserId if not passed
+    let userId = changedByUserId;
+    if (!userId) {
+      const appCheck = await pool.request().input('appId', sql.Int, appId).query('SELECT StudentID FROM dbo.Applications WHERE ApplicationID = @appId');
+      const studentId = appCheck.recordset[0]?.StudentID;
+      if (studentId) {
+        const userRes = await pool.request().input('sid', sql.Int, studentId).query('SELECT UserID FROM dbo.Students WHERE StudentID = @sid');
+        userId = userRes.recordset[0]?.UserID;
+      }
+    }
+
+    if (userId) {
+      await pool.request()
+        .input('appId', sql.Int, appId)
+        .input('status', sql.NVarChar(50), mapStatus(status))
+        .input('remarks', sql.NVarChar(1000), remarks || null)
+        .input('userId', sql.Int, userId)
+        .query('INSERT INTO dbo.ApplicationStatusHistory (ApplicationID, Status, Remarks, ChangedByUserID) VALUES (@appId, @status, @remarks, @userId)');
+    }
+
     return this.findById(appId);
   },
 
@@ -142,13 +162,16 @@ const ApplicationModel = {
         a.UpdatedAt AS updated_at,
         col.CollegeName AS school_name,
         col.CollegeID AS school_id,
+        col.City AS school_city,
         c.CourseName AS course_name,
+        b.BranchName AS branch_name,
         (sp.FirstName + ' ' + sp.LastName) AS student_name,
         sp.Email AS student_email
       FROM dbo.Applications a
       INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = a.CollegeCourseID
       INNER JOIN dbo.Colleges col ON col.CollegeID = cc.CollegeID
       INNER JOIN dbo.Courses c ON c.CourseID = cc.CourseID
+      INNER JOIN dbo.Branches b ON b.BranchID = cc.BranchID
       INNER JOIN dbo.Students st ON st.StudentID = a.StudentID
       LEFT JOIN dbo.StudentProfiles sp ON sp.StudentID = st.StudentID
       WHERE ${where}
@@ -168,12 +191,25 @@ const ApplicationModel = {
       INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = a.CollegeCourseID
       INNER JOIN dbo.Colleges col ON col.CollegeID = cc.CollegeID
       INNER JOIN dbo.Courses c ON c.CourseID = cc.CourseID
+      INNER JOIN dbo.Branches b ON b.BranchID = cc.BranchID
       INNER JOIN dbo.Students st ON st.StudentID = a.StudentID
       LEFT JOIN dbo.StudentProfiles sp ON sp.StudentID = st.StudentID
       WHERE ${where}
     `);
 
     return { rows: data.recordset, total: count.recordset[0].total };
+  },
+
+  async getStatusHistory(applicationId) {
+    const pool = await getPool();
+    const appId = typeof applicationId === 'number' ? applicationId : parseInt(String(applicationId), 10);
+    const result = await pool.request().input('appId', sql.Int, appId).query(`
+      SELECT Status AS status, Remarks AS remarks, CreatedAt AS createdAt
+      FROM dbo.ApplicationStatusHistory
+      WHERE ApplicationID = @appId
+      ORDER BY CreatedAt ASC
+    `);
+    return result.recordset;
   },
 
   async countByStatus(status) {

@@ -94,10 +94,28 @@ export function StudentDashboard() {
     () => [...new Set(allColleges.flatMap((college) => college.courses))].sort(),
     [allColleges]
   );
-  const branchOptions = useMemo(
-    () => [...new Set(allColleges.flatMap((college) => college.branches || []))].sort(),
-    [allColleges]
-  );
+  const branchOptions = useMemo(() => {
+    const courseSearchTerm = searchValues.course.trim().toLowerCase();
+    const selectedCourses = filters.courses.map((c) => c.toLowerCase());
+    const hasCourseFilter = selectedCourses.length > 0 || courseSearchTerm.length > 0;
+
+    if (hasCourseFilter) {
+      const filteredBranches = allColleges.flatMap((college) => {
+        const pairs = college.courseBranchPairs || [];
+        return pairs
+          .filter((pair) => {
+            const pairCourseLower = pair.courseName.toLowerCase();
+            const matchesCheckbox = selectedCourses.length === 0 || selectedCourses.includes(pairCourseLower);
+            const matchesSearch = !courseSearchTerm || pairCourseLower.includes(courseSearchTerm);
+            return matchesCheckbox && matchesSearch;
+          })
+          .map((pair) => pair.branchName);
+      });
+      return [...new Set(filteredBranches)].sort();
+    }
+
+    return [...new Set(allColleges.flatMap((college) => college.branches || []))].sort();
+  }, [allColleges, filters.courses, searchValues.course]);
   const filteredColleges = useMemo(() => {
     const collegeName = normalizeSearch(searchValues.collegeName);
     const course = normalizeSearch(searchValues.course);
@@ -169,6 +187,12 @@ export function StudentDashboard() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (filters.branch && !branchOptions.includes(filters.branch)) {
+      setFilters((prev) => ({ ...prev, branch: '' }));
+    }
+  }, [branchOptions, filters.branch]);
 
   useEffect(() => {
     let active = true;

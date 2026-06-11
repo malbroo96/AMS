@@ -10,6 +10,7 @@ const router = express.Router();
 router.post('/', authMiddleware, roleMiddleware('student'), validate(applicationSchema), applicationController.apply);
 router.get('/', authMiddleware, applicationController.getApplications);
 router.get('/:id', authMiddleware, applicationController.getApplication);
-router.put('/:id/status', authMiddleware, roleMiddleware('school_admin', 'super_admin'), validate(statusSchema), applicationController.updateStatus);
+router.put('/:id/status', authMiddleware, roleMiddleware('school_admin', 'super_admin', 'college'), validate(statusSchema), applicationController.updateStatus);
+router.get('/:id/history', authMiddleware, applicationController.getHistory);
 
 module.exports = router;

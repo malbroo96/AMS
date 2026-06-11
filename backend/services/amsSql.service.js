@@ -1014,6 +1014,18 @@ const amsSqlService = {
       CreatedAt: r.CollegeCreatedAt
     });
   },
+
+  async listAllCourses() {
+    const pool = await getPool();
+    const result = await pool.request().query('SELECT CourseID, CourseName, CourseCode FROM dbo.Courses WHERE IsActive = 1 ORDER BY CourseName');
+    return result.recordset;
+  },
+
+  async listAllBranches() {
+    const pool = await getPool();
+    const result = await pool.request().query('SELECT BranchID, CourseID, BranchName, BranchCode FROM dbo.Branches WHERE IsActive = 1 ORDER BY BranchName');
+    return result.recordset;
+  },
 };
 
 module.exports = amsSqlService;
