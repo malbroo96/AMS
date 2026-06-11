@@ -1,6 +1,6 @@
 const ApiError = require('../utils/ApiError');
 const { mapUser, mapStudent } = require('../utils/mappers');
-const UserModel = require('../models/userStore');
+const UserModel = require('../models/User.model');
 const StudentModel = require('../models/Student.model');
 
 const studentService = {

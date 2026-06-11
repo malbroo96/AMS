@@ -4,7 +4,6 @@ const ApplicationModel = require('../models/Application.model');
 const StudentModel = require('../models/Student.model');
 const SchoolModel = require('../models/School.model');
 const CourseModel = require('../models/Course.model');
-const NotificationModel = require('../models/Notification.model');
 
 const enrichApplication = (row) => ({
   ...mapApplication(row),
@@ -29,7 +28,7 @@ const applicationService = {
     }
 
     const course = await CourseModel.findById(courseId);
-    if (!course || course.school_id !== schoolId) {
+    if (!course || Number(course.school_id) !== Number(schoolId)) {
       throw new ApiError('Invalid school or course selection', 400);
     }
 
@@ -38,15 +37,6 @@ const applicationService = {
       schoolId,
       courseId,
     });
-
-    const school = await SchoolModel.findById(schoolId);
-    if (school?.admin_id) {
-      await NotificationModel.create({
-        userId: school.admin_id,
-        title: 'New Application',
-        message: `A new admission application has been submitted for ${school.school_name}.`,
-      });
-    }
 
     const full = await ApplicationModel.findById(app.id);
     return enrichApplication(full);
@@ -61,7 +51,7 @@ const applicationService = {
       const student = await StudentModel.findByUserId(user.id);
       if (!student) throw new ApiError('Student profile not found', 404);
       filters.studentId = student.id;
-    } else if (user.role === 'school_admin') {
+    } else if (user.role === 'school_admin' || user.role === 'college') {
       const school = await SchoolModel.findByAdminId(user.id);
       if (!school) throw new ApiError('No school assigned', 403);
       filters.schoolId = school.id;
@@ -83,29 +73,19 @@ const applicationService = {
 
     if (user.role === 'student') {
       const student = await StudentModel.findByUserId(user.id);
-      if (app.student_id !== student?.id) throw new ApiError('Access denied', 403);
+      if (Number(app.student_id) !== Number(student?.id)) throw new ApiError('Access denied', 403);
     }
-    if (user.role === 'school_admin') {
+    if (user.role === 'school_admin' || user.role === 'college') {
       const school = await SchoolModel.findByAdminId(user.id);
-      if (app.school_id !== school?.id) throw new ApiError('Access denied', 403);
+      if (Number(app.school_id) !== Number(school?.id)) throw new ApiError('Access denied', 403);
     }
 
     return enrichApplication(app);
   },
 
   async updateStatus(id, user, { status, remarks }) {
-    const app = await applicationService.getById(id, user);
+    await applicationService.getById(id, user);
     const updated = await ApplicationModel.updateStatus(id, { status, remarks });
-
-    const student = await StudentModel.findById(app.studentId || app.student_id);
-    if (student) {
-      await NotificationModel.create({
-        userId: student.user_id,
-        title: 'Application Update',
-        message: `Your application status is now: ${status}.${remarks ? ` Remarks: ${remarks}` : ''}`,
-      });
-    }
-
     return enrichApplication(updated);
   },
 };

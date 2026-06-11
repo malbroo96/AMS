@@ -1,51 +1,49 @@
 const bcrypt = require('bcryptjs');
 const { sql, getPool } = require('../config/database');
 const ApiError = require('../utils/ApiError');
-const UserModel = require('../models/userStore');
+const UserModel = require('../models/User.model');
 const { mapAmsStudentRow, mapAmsCollegeRow } = require('../utils/mappers');
-const AmsActivity = require('../models/AmsActivity.model');
-const CollegeAssetModel = require('../models/CollegeAsset.model');
 const collegePortal = require('./collegePortalSql.service');
 
-function buildCollegeProfilePayload(college, assets, stats = {}) {
-  const logoUrl = assets?.logoUrl || null;
-  const coverBannerUrl = assets?.bannerUrl || null;
+function buildCollegeProfilePayload(college, stats = {}) {
+  const logoUrl = college.logoUrl || null;
+  const coverBannerUrl = college.coverBannerUrl || null;
   const profile = {
     id: college.id,
     collegeName: college.collegeName || '',
-    shortName: '',
-    establishmentYear: null,
-    collegeType: '',
-    universityAffiliation: '',
-    naacGrade: '',
-    aicteApproval: false,
-    ugcRecognition: false,
+    shortName: college.shortName || '',
+    establishmentYear: college.establishmentYear || null,
+    collegeType: college.collegeType || '',
+    universityAffiliation: college.universityAffiliation || '',
+    naacGrade: college.naacGrade || '',
+    aicteApproval: college.aicteApproval || false,
+    ugcRecognition: college.ugcRecognition || false,
     email: college.email || '',
     status: college.status || '',
     logoUrl,
     coverBannerUrl,
-    prospectusUrl: null,
+    prospectusUrl: college.prospectusUrl || null,
     location: {
-      country: '',
-      state: '',
-      city: college.city || '',
-      pincode: '',
-      fullAddress: '',
+      country: 'India',
+      state: college.location?.state || '',
+      city: college.location?.city || '',
+      pincode: college.location?.pincode || '',
+      fullAddress: college.location?.fullAddress || '',
     },
     contact: {
       emailAddress: college.email || '',
-      admissionMobileNumber: '',
-      officeMobileNumber: '',
-      websiteUrl: '',
+      admissionMobileNumber: college.contact?.admissionMobileNumber || '',
+      officeMobileNumber: college.contact?.officeMobileNumber || '',
+      websiteUrl: college.contact?.websiteUrl || '',
     },
     placements: {
-      placementPercentage: null,
-      highestPackage: '',
-      averagePackage: '',
+      placementPercentage: college.placements?.placementPercentage || null,
+      highestPackage: college.placements?.highestPackage || '',
+      averagePackage: college.placements?.averagePackage || '',
       topRecruiters: [],
     },
     about: {
-      summaryDescription: '',
+      summaryDescription: college.about?.summaryDescription || '',
       visionStatement: '',
       missionStatement: '',
       principalMessage: '',
@@ -85,7 +83,7 @@ async function getRoleId(pool, roleName) {
 }
 
 async function addActivity(message) {
-  await AmsActivity.add(message);
+  console.log('AMS Activity:', message);
 }
 
 function visibleCollege(row) {
@@ -95,7 +93,7 @@ function visibleCollege(row) {
     collegeName: row.CollegeName,
     email: row.Email,
     status: row.Status,
-    createdByAdmin: row.CreatedByAdminUserID != null ? String(row.CreatedByAdminUserID) : null,
+    createdByAdmin: null,
   };
 }
 
@@ -146,7 +144,7 @@ const amsSqlService = {
       req.input('search', sql.VarChar(255), `%${search}%`);
     }
     const result = await req.query(`
-      SELECT c.CollegeID, c.CollegeName, c.Email, c.Status, c.CreatedByAdminUserID, c.UserID, c.CreatedAt
+      SELECT c.CollegeID, c.CollegeName, c.Email, c.Status, c.UserID, c.CreatedAt
       FROM Colleges c
       WHERE ${where}
       ORDER BY c.CollegeName
@@ -257,7 +255,7 @@ const amsSqlService = {
       .query(`
         SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status, 
                (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
-               c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.CreatedByAdminUserID
+               c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus
         FROM dbo.Applications sa
         INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
         INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
@@ -280,7 +278,7 @@ const amsSqlService = {
           CollegeName: row.CollegeName,
           Email: row.CollegeEmail,
           Status: row.CollegeStatus,
-          CreatedByAdminUserID: row.CreatedByAdminUserID,
+          CreatedByAdminUserID: null,
         }
       )
     );
@@ -405,26 +403,18 @@ const amsSqlService = {
 
   async adminDashboard() {
     const pool = await getPool();
-    const [students, colleges, apps, pending, logs] = await Promise.all([
+    const [students, colleges, apps, pending] = await Promise.all([
       pool.request().query('SELECT COUNT(*) AS n FROM Students'),
       pool.request().query('SELECT COUNT(*) AS n FROM Colleges'),
       pool.request().query('SELECT COUNT(*) AS n FROM dbo.Applications'),
       pool.request().query("SELECT COUNT(*) AS n FROM dbo.Applications WHERE CurrentStatus <> 'Approved'"),
-      pool.request().query(`
-        SELECT TOP 20 LogID AS id, Message AS message, CreatedAt AS createdAt
-        FROM ActivityLogs ORDER BY CreatedAt DESC
-      `),
     ]);
     return {
       totalStudents: students.recordset[0].n,
       totalColleges: colleges.recordset[0].n,
       interestedStudentsCount: apps.recordset[0].n,
       permissionRequests: pending.recordset[0].n,
-      recentActivities: logs.recordset.map((r) => ({
-        id: String(r.id),
-        message: r.message,
-        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
-      })),
+      recentActivities: [],
     };
   },
 
@@ -451,7 +441,7 @@ const amsSqlService = {
     const apps = await pool.request().query(`
       SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status, 
              (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
-             c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.CreatedByAdminUserID
+             c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus
       FROM dbo.Applications sa
       INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
       INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
@@ -475,7 +465,7 @@ const amsSqlService = {
             CollegeName: row.CollegeName,
             Email: row.CollegeEmail,
             Status: row.CollegeStatus,
-            CreatedByAdminUserID: row.CreatedByAdminUserID,
+            CreatedByAdminUserID: null,
           }
         )
       );
@@ -498,6 +488,11 @@ const amsSqlService = {
     }
     const interestedCollegeId = parseInt(String(data.interestedCollege || ''), 10);
 
+    const name = String(data.name || '').trim();
+    const firstSpace = name.indexOf(' ');
+    const firstName = firstSpace > 0 ? name.slice(0, firstSpace) : name || 'Student';
+    const lastName = firstSpace > 0 ? name.slice(firstSpace + 1) : '';
+
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
@@ -507,33 +502,99 @@ const amsSqlService = {
         .input('password', sql.NVarChar(255), await bcrypt.hash(password, 12))
         .input('fullName', sql.NVarChar(150), data.name)
         .input('phone', sql.NVarChar(30), data.mobile || data.phone || null)
-        .input('isApproved', sql.Bit, 1)
+        .input('isActive', sql.Bit, 1)
         .query(`
-          INSERT INTO Users (RoleID, Email, Password, FullName, Phone, IsApproved)
+          INSERT INTO Users (RoleID, Email, PasswordHash, FullName, Phone, IsActive)
           OUTPUT inserted.UserID
-          VALUES (@roleId, @email, @password, @fullName, @phone, @isApproved)
+          VALUES (@roleId, @email, @password, @fullName, @phone, @isActive)
         `);
 
       const userId = userOut.recordset[0].UserID;
       const studentOut = await new sql.Request(transaction)
         .input('userId', sql.Int, userId)
-        .input('name', sql.NVarChar(150), data.name)
-        .input('address', sql.NVarChar(500), data.address || '')
-        .input('mobile', sql.NVarChar(30), data.mobile || data.phone || '')
-        .input('email', sql.NVarChar(255), email)
-        .input('gender', sql.NVarChar(20), data.gender || '')
-        .input('dob', sql.Date, dobVal)
-        .input('education', sql.NVarChar(150), data.education || '')
-        .input('interestedCollege', sql.Int, Number.isFinite(interestedCollegeId) ? interestedCollegeId : null)
         .query(`
-          INSERT INTO Students (UserID, Name, Address, Mobile, Email, Gender, DateOfBirth, Education, InterestedCollege, ProfileVisible)
-          OUTPUT inserted.*
-          VALUES (@userId, @name, @address, @mobile, @email, @gender, @dob, @education, @interestedCollege, 0)
+          INSERT INTO Students (UserID, IsActive)
+          OUTPUT inserted.StudentID, inserted.UserID
+          VALUES (@userId, 1)
+        `);
+      const studentId = studentOut.recordset[0].StudentID;
+
+      await new sql.Request(transaction)
+        .input('studentId', sql.Int, studentId)
+        .input('firstName', sql.NVarChar(100), firstName)
+        .input('lastName', sql.NVarChar(100), lastName)
+        .input('email', sql.NVarChar(255), email)
+        .input('mobile', sql.NVarChar(30), data.mobile || data.phone || null)
+        .input('gender', sql.NVarChar(20), data.gender || null)
+        .input('dob', sql.Date, dobVal)
+        .input('address', sql.NVarChar(255), data.address || null)
+        .query(`
+          INSERT INTO StudentProfiles (StudentID, FirstName, LastName, Email, Mobile, Gender, DateOfBirth, AddressLine1, ProfileStatus, ProfileCompletionPercentage)
+          VALUES (@studentId, @firstName, @lastName, @email, @mobile, @gender, @dob, @address, 'Complete', 100)
         `);
 
+      await new sql.Request(transaction)
+        .input('studentId', sql.Int, studentId)
+        .input('qualification', sql.NVarChar(100), data.education || null)
+        .query(`
+          INSERT INTO StudentAcademicDetails (StudentID, Qualification)
+          VALUES (@studentId, @qualification)
+        `);
+
+      if (Number.isFinite(interestedCollegeId)) {
+        let courseRes = await new sql.Request(transaction)
+          .input('cid', sql.Int, interestedCollegeId)
+          .query('SELECT TOP 1 CollegeCourseID FROM dbo.CollegeCourses WHERE CollegeID = @cid');
+        let collegeCourseId = courseRes.recordset[0]?.CollegeCourseID;
+        if (!collegeCourseId) {
+          let defaultCourse = await new sql.Request(transaction).query('SELECT TOP 1 CourseID FROM dbo.Courses');
+          let courseId = defaultCourse.recordset[0]?.CourseID;
+          if (!courseId) {
+            let insCourse = await new sql.Request(transaction).query("INSERT INTO dbo.Courses (CourseName, CourseCode) OUTPUT inserted.CourseID VALUES ('General Course', 'GEN')");
+            courseId = insCourse.recordset[0].CourseID;
+          }
+          let defaultBranch = await new sql.Request(transaction).query('SELECT TOP 1 BranchID FROM dbo.Branches');
+          let branchId = defaultBranch.recordset[0]?.BranchID;
+          if (!branchId) {
+            let insBranch = await new sql.Request(transaction).input('cid', sql.Int, courseId).query("INSERT INTO dbo.Branches (CourseID, BranchName, BranchCode) OUTPUT inserted.BranchID VALUES (@cid, 'General Branch', 'GEN')");
+            branchId = insBranch.recordset[0].BranchID;
+          }
+          let insCc = await new sql.Request(transaction)
+            .input('cid', sql.Int, interestedCollegeId)
+            .input('courseId', sql.Int, courseId)
+            .input('branchId', sql.Int, branchId)
+            .query("INSERT INTO dbo.CollegeCourses (CollegeID, CourseID, BranchID, DurationYears, TotalSeats, AnnualFee) OUTPUT inserted.CollegeCourseID VALUES (@cid, @courseId, @branchId, 4.0, 60, 50000.00)");
+          collegeCourseId = insCc.recordset[0].CollegeCourseID;
+        }
+
+        await new sql.Request(transaction)
+          .input('sid', sql.Int, studentId)
+          .input('ccid', sql.Int, collegeCourseId)
+          .query(`
+            INSERT INTO dbo.Applications (StudentID, CollegeCourseID, CurrentStatus)
+            VALUES (@sid, @ccid, 'Interested')
+          `);
+      }
+
       await transaction.commit();
-      await addActivity(`Admin created student: ${data.name}`);
-      return { student: mapAmsStudentRow(studentOut.recordset[0]), temporaryPassword: password };
+      await addActivity(`Admin created student: ${name}`);
+
+      return {
+        student: {
+          StudentID: studentId,
+          UserID: userId,
+          Name: name,
+          Address: data.address || '',
+          Mobile: data.mobile || data.phone || '',
+          Email: email,
+          Gender: data.gender || '',
+          DateOfBirth: dobVal,
+          Education: data.education || '',
+          InterestedCollege: Number.isFinite(interestedCollegeId) ? String(interestedCollegeId) : '',
+          ProfileVisible: false
+        },
+        temporaryPassword: password
+      };
     } catch (e) {
       await transaction.rollback();
       throw e;
@@ -545,12 +606,19 @@ const amsSqlService = {
     const id = parseInt(String(idRaw), 10);
     if (!Number.isFinite(id)) throw new ApiError('Student not found', 404);
 
-    const cur = await pool.request().input('id', sql.Int, id).query('SELECT * FROM Students WHERE StudentID = @id');
+    const cur = await pool.request().input('id', sql.Int, id).query(`
+      SELECT s.StudentID, s.UserID, sp.FirstName, sp.LastName, sp.Email, sp.Mobile, sp.Gender, sp.DateOfBirth, sp.AddressLine1 AS Address, sad.Qualification AS Education
+      FROM Students s
+      LEFT JOIN StudentProfiles sp ON sp.StudentID = s.StudentID
+      LEFT JOIN StudentAcademicDetails sad ON sad.StudentID = s.StudentID
+      WHERE s.StudentID = @id
+    `);
     const row = cur.recordset[0];
     if (!row) throw new ApiError('Student not found', 404);
 
-    const nextEmail = data.email !== undefined ? data.email.trim().toLowerCase() : row.Email;
-    if (nextEmail !== row.Email.toLowerCase()) {
+    const currentEmail = row.Email || '';
+    const nextEmail = data.email !== undefined ? data.email.trim().toLowerCase() : currentEmail;
+    if (nextEmail !== currentEmail.toLowerCase() && nextEmail) {
       const duplicate = await pool
         .request()
         .input('email', sql.VarChar(255), nextEmail)
@@ -564,10 +632,11 @@ const amsSqlService = {
       const d = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
       dobVal = d && !Number.isNaN(d.getTime()) ? d : null;
     }
-    const interestedCollegeId =
-      data.interestedCollege !== undefined
-        ? parseInt(String(data.interestedCollege || ''), 10)
-        : row.InterestedCollege;
+
+    const name = String(data.name || row.FirstName + ' ' + (row.LastName || '')).trim();
+    const firstSpace = name.indexOf(' ');
+    const firstName = firstSpace > 0 ? name.slice(0, firstSpace) : name || 'Student';
+    const lastName = firstSpace > 0 ? name.slice(firstSpace + 1) : '';
 
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
@@ -575,39 +644,99 @@ const amsSqlService = {
       const userReq = new sql.Request(transaction)
         .input('userId', sql.Int, row.UserID)
         .input('email', sql.VarChar(255), nextEmail)
-        .input('name', sql.NVarChar(150), data.name ?? row.Name)
+        .input('name', sql.NVarChar(150), name)
         .input('phone', sql.NVarChar(30), data.mobile ?? row.Mobile ?? null);
 
       let userSql = 'UPDATE Users SET Email = @email, FullName = @name, Phone = @phone';
       if (data.password) {
         userReq.input('password', sql.NVarChar(255), await bcrypt.hash(data.password, 12));
-        userSql += ', Password = @password';
+        userSql += ', PasswordHash = @password';
       }
       userSql += ' WHERE UserID = @userId';
       await userReq.query(userSql);
 
-      const studentOut = await new sql.Request(transaction)
+      await new sql.Request(transaction)
         .input('id', sql.Int, id)
-        .input('name', sql.NVarChar(150), data.name ?? row.Name)
-        .input('address', sql.NVarChar(500), data.address ?? row.Address ?? '')
-        .input('mobile', sql.NVarChar(30), data.mobile ?? row.Mobile ?? '')
+        .input('firstName', sql.NVarChar(100), firstName)
+        .input('lastName', sql.NVarChar(100), lastName)
         .input('email', sql.NVarChar(255), nextEmail)
-        .input('gender', sql.NVarChar(20), data.gender ?? row.Gender ?? '')
+        .input('mobile', sql.NVarChar(30), data.mobile ?? row.Mobile ?? null)
+        .input('gender', sql.NVarChar(20), data.gender ?? row.Gender ?? null)
         .input('dob', sql.Date, dobVal)
-        .input('education', sql.NVarChar(150), data.education ?? row.Education ?? '')
-        .input('interestedCollege', sql.Int, Number.isFinite(interestedCollegeId) ? interestedCollegeId : null)
+        .input('address', sql.NVarChar(255), data.address ?? row.Address ?? null)
         .query(`
-          UPDATE Students
-          SET Name = @name, Address = @address, Mobile = @mobile, Email = @email,
-              Gender = @gender, DateOfBirth = @dob, Education = @education,
-              InterestedCollege = @interestedCollege
-          OUTPUT inserted.*
+          UPDATE StudentProfiles
+          SET FirstName = @firstName, LastName = @lastName, Email = @email, Mobile = @mobile,
+              Gender = @gender, DateOfBirth = @dob, AddressLine1 = @address
           WHERE StudentID = @id
         `);
 
+      await new sql.Request(transaction)
+        .input('id', sql.Int, id)
+        .input('qualification', sql.NVarChar(100), data.education ?? row.Education ?? null)
+        .query(`
+          UPDATE StudentAcademicDetails
+          SET Qualification = @qualification
+          WHERE StudentID = @id
+        `);
+
+      if (data.interestedCollege !== undefined) {
+        const interestedCollegeId = parseInt(String(data.interestedCollege || ''), 10);
+        if (Number.isFinite(interestedCollegeId)) {
+          await new sql.Request(transaction)
+            .input('sid', sql.Int, id)
+            .query('DELETE FROM dbo.Applications WHERE StudentID = @sid');
+
+          let courseRes = await new sql.Request(transaction)
+            .input('cid', sql.Int, interestedCollegeId)
+            .query('SELECT TOP 1 CollegeCourseID FROM dbo.CollegeCourses WHERE CollegeID = @cid');
+          let collegeCourseId = courseRes.recordset[0]?.CollegeCourseID;
+          if (!collegeCourseId) {
+            let defaultCourse = await new sql.Request(transaction).query('SELECT TOP 1 CourseID FROM dbo.Courses');
+            let courseId = defaultCourse.recordset[0]?.CourseID;
+            if (!courseId) {
+              let insCourse = await new sql.Request(transaction).query("INSERT INTO dbo.Courses (CourseName, CourseCode) OUTPUT inserted.CourseID VALUES ('General Course', 'GEN')");
+              courseId = insCourse.recordset[0].CourseID;
+            }
+            let defaultBranch = await new sql.Request(transaction).query('SELECT TOP 1 BranchID FROM dbo.Branches');
+            let branchId = defaultBranch.recordset[0]?.BranchID;
+            if (!branchId) {
+              let insBranch = await new sql.Request(transaction).input('cid', sql.Int, courseId).query("INSERT INTO dbo.Branches (CourseID, BranchName, BranchCode) OUTPUT inserted.BranchID VALUES (@cid, 'General Branch', 'GEN')");
+              branchId = insBranch.recordset[0].BranchID;
+            }
+            let insCc = await new sql.Request(transaction)
+              .input('cid', sql.Int, interestedCollegeId)
+              .input('courseId', sql.Int, courseId)
+              .input('branchId', sql.Int, branchId)
+              .query("INSERT INTO dbo.CollegeCourses (CollegeID, CourseID, BranchID, DurationYears, TotalSeats, AnnualFee) OUTPUT inserted.CollegeCourseID VALUES (@cid, @courseId, @branchId, 4.0, 60, 50000.00)");
+            collegeCourseId = insCc.recordset[0].CollegeCourseID;
+          }
+
+          await new sql.Request(transaction)
+            .input('sid', sql.Int, id)
+            .input('ccid', sql.Int, collegeCourseId)
+            .query(`
+              INSERT INTO dbo.Applications (StudentID, CollegeCourseID, CurrentStatus)
+              VALUES (@sid, @ccid, 'Interested')
+            `);
+        }
+      }
+
       await transaction.commit();
-      await addActivity(`Admin updated student: ${data.name ?? row.Name}`);
-      return mapAmsStudentRow(studentOut.recordset[0]);
+      await addActivity(`Admin updated student: ${name}`);
+      return {
+        StudentID: id,
+        UserID: row.UserID,
+        Name: name,
+        Address: data.address ?? row.Address ?? '',
+        Mobile: data.mobile ?? row.Mobile ?? '',
+        Email: nextEmail,
+        Gender: data.gender ?? row.Gender ?? '',
+        DateOfBirth: dobVal,
+        Education: data.education ?? row.Education ?? '',
+        InterestedCollege: data.interestedCollege !== undefined ? String(data.interestedCollege) : '',
+        ProfileVisible: false
+      };
     } catch (e) {
       await transaction.rollback();
       throw e;
@@ -645,7 +774,7 @@ const amsSqlService = {
              sp.Email AS StudentEmail, sp.Gender AS StudentGender, sp.DateOfBirth AS StudentDOB, sad.Qualification AS StudentEducation,
              (SELECT TOP 1 cc2.CollegeID FROM dbo.Applications a2 INNER JOIN dbo.CollegeCourses cc2 ON cc2.CollegeCourseID = a2.CollegeCourseID WHERE a2.StudentID = st.StudentID ORDER BY a2.CreatedAt DESC) AS InterestedCollege,
              (CASE WHEN EXISTS (SELECT 1 FROM dbo.Applications a3 WHERE a3.StudentID = st.StudentID AND a3.CurrentStatus = 'Approved') THEN 1 ELSE 0 END) AS ProfileVisible,
-             c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.CreatedByAdminUserID, c.UserID AS CollegeUserId, c.CreatedAt AS CollegeCreatedAt
+             c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.UserID AS CollegeUserId, c.CreatedAt AS CollegeCreatedAt
       FROM dbo.Applications sa
       INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
       INNER JOIN dbo.Students st ON st.StudentID = sa.StudentID
@@ -674,7 +803,7 @@ const amsSqlService = {
         Email: row.CollegeEmail,
         UserID: row.CollegeUserId,
         Status: row.CollegeStatus,
-        CreatedByAdminUserID: row.CreatedByAdminUserID,
+        CreatedByAdminUserID: null,
         CreatedAt: row.CollegeCreatedAt,
       });
       const created = row.AppCreatedAt instanceof Date ? row.AppCreatedAt.toISOString() : row.AppCreatedAt;
@@ -693,14 +822,12 @@ const amsSqlService = {
 
   async createCollege(admin, data) {
     const pool = await getPool();
-    await collegePortal.ensureTables();
     const email = data.email.trim().toLowerCase();
     const existing = await UserModel.findByEmail(email);
     if (existing) throw new ApiError('Email already registered', 409);
 
     const password = data.password || 'College@123';
     const collegeRoleId = await getRoleId(pool, 'college');
-    const adminUserId = parseInt(String(admin.id), 10);
 
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
@@ -711,11 +838,11 @@ const amsSqlService = {
         .input('password', sql.NVarChar(255), await bcrypt.hash(password, 12))
         .input('fullName', sql.NVarChar(150), data.collegeName)
         .input('phone', sql.NVarChar(30), data.mobile || null)
-        .input('isApproved', sql.Bit, 1);
+        .input('isActive', sql.Bit, 1);
       const userOut = await insUser.query(`
-        INSERT INTO Users (RoleID, Email, Password, FullName, Phone, IsApproved)
+        INSERT INTO Users (RoleID, Email, PasswordHash, FullName, Phone, IsActive)
         OUTPUT inserted.UserID
-        VALUES (@roleId, @email, @password, @fullName, @phone, @isApproved)
+        VALUES (@roleId, @email, @password, @fullName, @phone, @isActive)
       `);
       const userId = userOut.recordset[0].UserID;
 
@@ -724,12 +851,11 @@ const amsSqlService = {
         .input('collegeName', sql.VarChar(150), data.collegeName)
         .input('email', sql.VarChar(255), email)
         .input('userId', sql.Int, userId)
-        .input('status', sql.VarChar(20), status)
-        .input('createdBy', sql.Int, adminUserId);
+        .input('status', sql.VarChar(20), status);
       const colOut = await insCol.query(`
-        INSERT INTO Colleges (CollegeName, Email, UserID, Status, CreatedByAdminUserID)
-        OUTPUT inserted.CollegeID, inserted.CollegeName, inserted.Email, inserted.UserID, inserted.Status, inserted.CreatedByAdminUserID, inserted.CreatedAt
-        VALUES (@collegeName, @email, @userId, @status, @createdBy)
+        INSERT INTO Colleges (CollegeName, Email, UserID, Status)
+        OUTPUT inserted.CollegeID, inserted.CollegeName, inserted.Email, inserted.UserID, inserted.Status, inserted.CreatedAt
+        VALUES (@collegeName, @email, @userId, @status)
       `);
       const crow = colOut.recordset[0];
 
@@ -738,8 +864,8 @@ const amsSqlService = {
         .input('contactEmail', sql.NVarChar(255), email)
         .input('completion', sql.Decimal(5, 2), 15)
         .query(`
-          INSERT INTO dbo.CollegeProfiles (CollegeID, ContactEmail, ProfileCompletionPercentage)
-          VALUES (@collegeId, @contactEmail, @completion)
+          INSERT INTO dbo.CollegeProfiles (CollegeID, ShortName, ProfileCompletionPercentage)
+          VALUES (@collegeId, @collegeName, @completion)
         `);
 
       await transaction.commit();
@@ -751,7 +877,7 @@ const amsSqlService = {
         Email: crow.Email,
         UserID: crow.UserID,
         Status: crow.Status,
-        CreatedByAdminUserID: crow.CreatedByAdminUserID,
+        CreatedByAdminUserID: null,
         CreatedAt: crow.CreatedAt,
       });
       return { college, temporaryPassword: password };
@@ -801,7 +927,7 @@ const amsSqlService = {
       let userSql = 'UPDATE Users SET FullName = @fullName, Email = @email';
       if (data.password) {
         userReq.input('password', sql.NVarChar(255), await bcrypt.hash(data.password, 12));
-        userSql += ', Password = @password';
+        userSql += ', PasswordHash = @password';
       }
       userSql += ' WHERE UserID = @uid';
       await userReq.query(userSql);
@@ -872,7 +998,7 @@ const amsSqlService = {
       .query(`
         SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status,
                (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
-               c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.CreatedByAdminUserID
+               c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.UserID AS CollegeUserId, c.CreatedAt AS CollegeCreatedAt
         FROM dbo.Applications sa
         INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
         INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
@@ -884,7 +1010,8 @@ const amsSqlService = {
       CollegeName: r.CollegeName,
       Email: r.CollegeEmail,
       Status: r.CollegeStatus,
-      CreatedByAdminUserID: r.CreatedByAdminUserID,
+      CreatedByAdminUserID: null,
+      CreatedAt: r.CollegeCreatedAt
     });
   },
 };

@@ -58,7 +58,7 @@ async function upsertUser(pool, roleIds, u, userMap) {
       .input('approved', sql.Bit, u.is_approved ? 1 : 0)
       .query(`
         UPDATE Users
-        SET RoleID = @rid, Password = @pw, FullName = @name, Phone = @phone, IsApproved = @approved
+        SET RoleID = @rid, PasswordHash = @pw, FullName = @name, Phone = @phone, IsActive = @approved
         WHERE UserID = @id
       `);
   } else {
@@ -71,7 +71,7 @@ async function upsertUser(pool, roleIds, u, userMap) {
       .input('phone', sql.VarChar(20), u.phone || null)
       .input('approved', sql.Bit, u.is_approved ? 1 : 0)
       .query(`
-        INSERT INTO Users (RoleID, Email, Password, FullName, Phone, IsApproved)
+        INSERT INTO Users (RoleID, Email, PasswordHash, FullName, Phone, IsActive)
         OUTPUT inserted.UserID
         VALUES (@rid, @email, @pw, @name, @phone, @approved)
       `);
@@ -106,10 +106,9 @@ async function upsertCollege(pool, c, userMap, collegeMap) {
       .input('email', sql.VarChar(150), email)
       .input('uid', sql.Int, uid)
       .input('st', sql.VarChar(50), c.status || 'approved')
-      .input('by', sql.Int, adminUid)
       .query(`
         UPDATE Colleges
-        SET CollegeName = @cn, Email = @email, UserID = @uid, Status = @st, CreatedByAdminUserID = @by
+        SET CollegeName = @cn, Email = @email, UserID = @uid, Status = @st
         WHERE CollegeID = @id
       `);
   } else {
@@ -119,11 +118,10 @@ async function upsertCollege(pool, c, userMap, collegeMap) {
       .input('email', sql.VarChar(150), email)
       .input('uid', sql.Int, uid)
       .input('st', sql.VarChar(50), c.status || 'approved')
-      .input('by', sql.Int, adminUid)
       .query(`
-        INSERT INTO Colleges (CollegeName, Email, UserID, Status, CreatedByAdminUserID)
+        INSERT INTO Colleges (CollegeName, Email, UserID, Status)
         OUTPUT inserted.CollegeID
-        VALUES (@cn, @email, @uid, @st, @by)
+        VALUES (@cn, @email, @uid, @st)
       `);
     collegeId = ins.recordset[0].CollegeID;
   }
@@ -336,12 +334,7 @@ async function main() {
     await upsertInterest(pool, i, studentMap, collegeMap);
   }
 
-  const activities = [...(db.activities || [])].reverse();
-  for (const a of activities) {
-    const msg = String(a.message || '').slice(0, 500);
-    if (!msg) continue;
-    await pool.request().input('m', sql.NVarChar(500), msg).query('INSERT INTO ActivityLogs (Message) VALUES (@m)');
-  }
+  // ActivityLogs table is deprecated in the authoritative schema.
 
   if (sourcePath === jsonPath && !fs.existsSync(backupPath)) {
     fs.renameSync(jsonPath, backupPath);

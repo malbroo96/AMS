@@ -42,9 +42,9 @@ function parseDbServer() {
 
 const dbHost = parseDbServer();
 /** JSON file storage only when USE_LOCAL_AUTH=true (dev fallback). Default: MSSQL AMS. */
-const localAuth = process.env.USE_LOCAL_AUTH === 'true';
+const localAuth = false;
 /** AMS portal + auth via dbo.Users, Colleges, Students, … */
-const useAmsSql = !localAuth;
+const useAmsSql = true;
 
 module.exports = {
   port: parseInt(process.env.PORT, 10) || 5000,

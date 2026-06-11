@@ -8,7 +8,7 @@ const mapUser = (row) => {
     email: row.email,
     phone: row.phone,
     role: row.role,
-    isApproved: !!row.is_approved,
+    isActive: !!row.isActive,
     createdAt: row.created_at,
   };
 };
