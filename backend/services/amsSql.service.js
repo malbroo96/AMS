@@ -4,6 +4,7 @@ const ApiError = require('../utils/ApiError');
 const UserModel = require('../models/User.model');
 const { mapAmsStudentRow, mapAmsCollegeRow } = require('../utils/mappers');
 const collegePortal = require('./collegePortalSql.service');
+const { ApplicationStatus, hasProfileAccess } = require('../config/constants');
 
 function buildCollegeProfilePayload(college, stats = {}) {
   const logoUrl = college.logoUrl || null;
@@ -107,6 +108,8 @@ function interestDto(appRow, collegeRow) {
     approvedByAdmin: !!appRow.ApprovedByAdmin,
     createdAt: created,
     college: visibleCollege(collegeRow),
+    courseName: appRow.CourseName || '',
+    branchName: appRow.BranchName || '',
   };
 }
 
@@ -255,10 +258,13 @@ const amsSqlService = {
       .query(`
         SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status, 
                (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
-               c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus
+               col.CollegeName, col.Email AS CollegeEmail, col.Status AS CollegeStatus,
+               crs.CourseName, br.BranchName
         FROM dbo.Applications sa
         INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
-        INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
+        INNER JOIN dbo.Colleges col ON col.CollegeID = cc.CollegeID
+        INNER JOIN dbo.Courses crs ON crs.CourseID = cc.CourseID
+        INNER JOIN dbo.Branches br ON br.BranchID = cc.BranchID
         WHERE sa.StudentID = @sid
         ORDER BY sa.CreatedAt DESC
       `);
@@ -272,6 +278,8 @@ const amsSqlService = {
           Status: row.Status,
           ApprovedByAdmin: row.ApprovedByAdmin,
           CreatedAt: row.CreatedAt,
+          CourseName: row.CourseName,
+          BranchName: row.BranchName,
         },
         {
           CollegeID: row.CollegeID,
@@ -361,10 +369,13 @@ const amsSqlService = {
         SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status, 
                (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
                (sp.FirstName + ' ' + sp.LastName) AS Name, sp.AddressLine1 AS Address, sp.Mobile, sp.Email, sp.Gender, sp.DateOfBirth,
-               sad.Qualification AS Education,
-               st.StudentID AS StuId, st.UserID AS StuUserID
+               sad.Qualification AS Education, sad.Board, sad.TenthPercentage AS Percentage,
+               st.StudentID AS StuId, st.UserID AS StuUserID,
+               c.CourseName, b.BranchName
         FROM dbo.Applications sa
         INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
+        INNER JOIN dbo.Courses c ON c.CourseID = cc.CourseID
+        INNER JOIN dbo.Branches b ON b.BranchID = cc.BranchID
         INNER JOIN dbo.Students st ON st.StudentID = sa.StudentID
         LEFT JOIN dbo.StudentProfiles sp ON sp.StudentID = st.StudentID
         LEFT JOIN dbo.StudentAcademicDetails sad ON sad.StudentID = st.StudentID
@@ -373,30 +384,92 @@ const amsSqlService = {
       `);
 
     const interests = apps.recordset;
+
+    // Batch query student documents
+    const studentIds = interests.map((row) => Number(row.StuId)).filter(Number.isFinite);
+    let studentDocsMap = new Map();
+    if (studentIds.length) {
+      const docReq = pool.request();
+      const idParams = studentIds.map((id, index) => {
+        const param = `stuId${index}`;
+        docReq.input(param, sql.Int, id);
+        return `@${param}`;
+      });
+      const docsResult = await docReq.query(`
+        SELECT StudentID, DocumentType, SharePointUrl, IsVerified
+        FROM dbo.StudentDocuments
+        WHERE IsActive = 1 AND StudentID IN (${idParams.join(', ')})
+      `);
+      studentDocsMap = docsResult.recordset.reduce((groups, row) => {
+        const key = String(row.StudentID);
+        const next = groups.get(key) || [];
+        next.push({
+          documentType: row.DocumentType,
+          fileUrl: row.SharePointUrl,
+          isVerified: !!row.IsVerified,
+        });
+        groups.set(key, next);
+        return groups;
+      }, new Map());
+    }
+
     return {
       college: visibleCollege(collegeRow),
       stats: {
         interestedStudents: interests.length,
-        grantedProfiles: interests.filter((r) => r.ApprovedByAdmin).length,
-        hiddenProfiles: interests.filter((r) => !r.ApprovedByAdmin).length,
+        grantedProfiles: interests.filter((r) => hasProfileAccess(r.Status)).length,
+        hiddenProfiles: interests.filter((r) => !hasProfileAccess(r.Status)).length,
       },
       students: interests.map((row) => {
-        const student = mapAmsStudentRow({
-          StudentID: row.StuId,
-          UserID: row.StuUserID,
-          Name: row.Name,
-          Address: row.Address,
-          Mobile: row.Mobile,
-          Email: row.Email,
-          Gender: row.Gender,
-          DateOfBirth: row.DateOfBirth,
-          Education: row.Education,
-        });
+        const student = {
+          ...mapAmsStudentRow({
+            StudentID: row.StuId,
+            UserID: row.StuUserID,
+            Name: row.Name,
+            Address: row.Address,
+            Mobile: row.Mobile,
+            Email: row.Email,
+            Gender: row.Gender,
+            DateOfBirth: row.DateOfBirth,
+            Education: row.Education,
+          }),
+          board: row.Board || '',
+          percentage: row.Percentage != null ? Number(row.Percentage) : null,
+          courseName: row.CourseName || '',
+          branchName: row.BranchName || '',
+          applicationId: String(row.ApplicationID),
+          appliedDate: row.CreatedAt,
+        };
+
         const interestLike = {
-          approvedByAdmin: !!row.ApprovedByAdmin,
+          approvedByAdmin: hasProfileAccess(row.Status),
           createdAt: row.CreatedAt instanceof Date ? row.CreatedAt.toISOString() : row.CreatedAt,
         };
-        return row.ApprovedByAdmin ? fullStudent(student, interestLike) : publicStudent(student, interestLike);
+
+        const isApproved = hasProfileAccess(row.Status);
+        if (!isApproved) {
+          return {
+            studentId: student.id,
+            applicationId: student.applicationId,
+            status: row.Status,
+            name: student.name,
+            courseName: student.courseName,
+            branchName: student.branchName,
+            appliedDate: student.appliedDate,
+            fullProfile: false,
+          };
+        } else {
+          return {
+            ...fullStudent(student, interestLike),
+            studentId: student.id,
+            applicationId: student.applicationId,
+            status: row.Status,
+            courseName: student.courseName,
+            branchName: student.branchName,
+            appliedDate: student.appliedDate,
+            documents: studentDocsMap.get(student.id) || [],
+          };
+        }
       }),
     };
   },
@@ -963,7 +1036,7 @@ const amsSqlService = {
     return { message: 'College deleted successfully' };
   },
 
-  async setInterestPermission(idRaw, approvedByAdmin) {
+  async setInterestPermission(idRaw, approvedByAdmin, changedByUserId) {
     const pool = await getPool();
     const id = parseInt(String(idRaw), 10);
     if (!Number.isFinite(id)) throw new ApiError('Interest request not found', 404);
@@ -971,22 +1044,33 @@ const amsSqlService = {
     const cur = await pool.request().input('id', sql.Int, id).query(`
       SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status,
              (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
-             c.CollegeName
+             c.CollegeName, crs.CourseName, br.BranchName
       FROM dbo.Applications sa
       INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
       INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
+      INNER JOIN dbo.Courses crs ON crs.CourseID = cc.CourseID
+      INNER JOIN dbo.Branches br ON br.BranchID = cc.BranchID
       WHERE sa.ApplicationID = @id
     `);
     const row = cur.recordset[0];
     if (!row) throw new ApiError('Interest request not found', 404);
 
     const appr = !!approvedByAdmin;
-    const status = appr ? 'Approved' : 'Interested';
+    const status = appr ? ApplicationStatus.APPROVED : ApplicationStatus.REJECTED;
     await pool
       .request()
       .input('id', sql.Int, id)
       .input('st', sql.VarChar(50), status)
       .query('UPDATE dbo.Applications SET CurrentStatus = @st, UpdatedAt = SYSUTCDATETIME() WHERE ApplicationID = @id');
+
+    if (changedByUserId) {
+      await pool.request()
+        .input('appId', sql.Int, id)
+        .input('status', sql.NVarChar(50), status)
+        .input('remarks', sql.NVarChar(1000), appr ? 'Approved by admin' : 'Rejected by admin')
+        .input('userId', sql.Int, changedByUserId)
+        .query('INSERT INTO dbo.ApplicationStatusHistory (ApplicationID, Status, Remarks, ChangedByUserID) VALUES (@appId, @status, @remarks, @userId)');
+    }
 
     await addActivity(
       `${appr ? 'Granted' : 'Revoked'} student profile access for ${row.CollegeName}`
@@ -998,10 +1082,13 @@ const amsSqlService = {
       .query(`
         SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status,
                (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
-               c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.UserID AS CollegeUserId, c.CreatedAt AS CollegeCreatedAt
+               c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.UserID AS CollegeUserId, c.CreatedAt AS CollegeCreatedAt,
+               crs.CourseName, br.BranchName
         FROM dbo.Applications sa
         INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
         INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
+        INNER JOIN dbo.Courses crs ON crs.CourseID = cc.CourseID
+        INNER JOIN dbo.Branches br ON br.BranchID = cc.BranchID
         WHERE sa.ApplicationID = @id
       `);
     const r = after.recordset[0];

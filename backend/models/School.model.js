@@ -71,23 +71,27 @@ const SchoolModel = {
       request.input('search', sql.NVarChar(255), `%${search}%`);
     }
     const data = await request.query(`
-      SELECT 
-        c.CollegeID AS id,
-        c.CollegeName AS school_name,
-        p.Address AS address,
-        p.City AS city,
-        p.ContactPhone AS phone,
-        c.Email AS email,
-        p.SummaryDescription AS description,
-        p.LogoUrl AS logo_url,
-        p.NaacGrade AS board,
-        c.UserID AS admin_id,
-        c.CreatedAt AS created_at
-      FROM dbo.Colleges c
-      LEFT JOIN dbo.CollegeProfiles p ON p.CollegeID = c.CollegeID
-      WHERE ${where}
-      ORDER BY c.CreatedAt DESC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      WITH PagedSchools AS (
+        SELECT 
+          c.CollegeID AS id,
+          c.CollegeName AS school_name,
+          p.Address AS address,
+          p.City AS city,
+          p.ContactPhone AS phone,
+          c.Email AS email,
+          p.SummaryDescription AS description,
+          p.LogoUrl AS logo_url,
+          p.NaacGrade AS board,
+          c.UserID AS admin_id,
+          c.CreatedAt AS created_at,
+          ROW_NUMBER() OVER (ORDER BY c.CreatedAt DESC) AS RowNum
+        FROM dbo.Colleges c
+        LEFT JOIN dbo.CollegeProfiles p ON p.CollegeID = c.CollegeID
+        WHERE ${where}
+      )
+      SELECT * FROM PagedSchools
+      WHERE RowNum > @offset AND RowNum <= (@offset + @limit)
+      ORDER BY RowNum
     `);
     const countReq = pool.request();
     if (search) countReq.input('search', sql.NVarChar(255), `%${search}%`);

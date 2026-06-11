@@ -149,21 +149,25 @@ const UserModel = {
       req.input('search', sql.NVarChar(255), `%${search}%`);
     }
     const data = await req.query(`
-      SELECT
-        u.UserID AS id,
-        u.FullName AS [name],
-        u.Email AS email,
-        u.Phone AS phone,
-        'school_admin' AS role,
-        u.IsActive AS isActive,
-        u.CreatedAt AS created_at,
-        CAST(NULL AS UNIQUEIDENTIFIER) AS school_id,
-        CAST(NULL AS NVARCHAR(200)) AS school_name,
-        CAST(NULL AS NVARCHAR(100)) AS city
-      FROM Users u
-      WHERE ${where}
-      ORDER BY u.CreatedAt DESC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      WITH PagedUsers AS (
+        SELECT
+          u.UserID AS id,
+          u.FullName AS [name],
+          u.Email AS email,
+          u.Phone AS phone,
+          'school_admin' AS role,
+          u.IsActive AS isActive,
+          u.CreatedAt AS created_at,
+          CAST(NULL AS UNIQUEIDENTIFIER) AS school_id,
+          CAST(NULL AS NVARCHAR(200)) AS school_name,
+          CAST(NULL AS NVARCHAR(100)) AS city,
+          ROW_NUMBER() OVER (ORDER BY u.CreatedAt DESC) AS RowNum
+        FROM Users u
+        WHERE ${where}
+      )
+      SELECT * FROM PagedUsers
+      WHERE RowNum > @offset AND RowNum <= (@offset + @limit)
+      ORDER BY RowNum
     `);
     const countReq = pool.request().input('collegeRoleId', sql.Int, collegeRoleId);
     if (search) countReq.input('search', sql.NVarChar(255), `%${search}%`);

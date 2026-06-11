@@ -120,7 +120,7 @@ exports.deleteCollege = asyncHandler(async (req, res) => {
 });
 
 exports.setInterestPermission = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await amsService.setInterestPermission(req.params.id, req.body.approvedByAdmin) });
+  res.json({ success: true, data: await amsService.setInterestPermission(req.params.id, req.body.approvedByAdmin, req.user.id) });
 });
 
 exports.listAllCourses = asyncHandler(async (req, res) => {

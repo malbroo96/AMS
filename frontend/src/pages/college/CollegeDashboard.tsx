@@ -10,6 +10,7 @@ import {
   uploadCollegeLogo,
   type CollegeAssets,
 } from '../../api/ams';
+import { updateApplicationStatus } from '../../api/applications';
 import { button, shell, table } from '../../components/ui/designTokens';
 import { useToast } from '../../context/ToastContext';
 import type { College } from '../../types';
@@ -23,6 +24,19 @@ export function CollegeDashboard() {
   const [editMode, setEditMode] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({ collegeName: '', email: '' });
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+
+  const handleRequestAccess = async (applicationId: string) => {
+    try {
+      await updateApplicationStatus(applicationId, { status: 'under_review', remarks: 'College requested profile access' });
+      showToast('Access request submitted. Awaiting admin approval.', 'success');
+      getCollegeDashboard()
+        .then((res) => setData(res.data.data))
+        .catch(() => showToast('Unable to reload college dashboard', 'error'));
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to request access', 'error');
+    }
+  };
 
   useEffect(() => {
     getCollegeDashboard()
@@ -256,30 +270,183 @@ export function CollegeDashboard() {
           <Stat label="Hidden Profiles" value={data.stats?.hiddenProfiles || 0} />
         </div>
         <section className={`p-5 ${shell.card}`}>
-          <h2 className="text-lg font-bold text-slate-900">Student Requests</h2>
+          <h2 className="text-lg font-bold text-slate-900">Applications Received</h2>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className={table.head}>
                 <tr>
-                  <th className="p-3">Student ID</th><th className="p-3">Status</th><th className="p-3">Name</th><th className="p-3">Mobile</th><th className="p-3">Email</th><th className="p-3">Profile</th>
+                  <th className="p-3">Student Name</th>
+                  <th className="p-3">Course</th>
+                  <th className="p-3">Branch</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">Applied Date</th>
+                  <th className="p-3 text-right">Access Action</th>
                 </tr>
               </thead>
               <tbody>
-                {(data.students || []).map((student) => (
-                  <tr key={String(student.studentId)} className={table.row}>
-                    <td className="p-3 font-mono text-xs">{String(student.studentId)}</td>
-                    <td className="p-3">{String(student.status)}</td>
-                    <td className="p-3">{student.name ? String(student.name) : 'Hidden'}</td>
-                    <td className="p-3">{student.mobile ? String(student.mobile) : 'Hidden'}</td>
-                    <td className="p-3">{student.email ? String(student.email) : 'Hidden'}</td>
-                    <td className="p-3">{student.fullProfile ? 'Full profile visible' : 'Awaiting admin grant'}</td>
-                  </tr>
-                ))}
+                {(data.students || []).map((student: any) => {
+                  const statusLower = String(student.status || '').toLowerCase().trim();
+                  const isSubmitted = statusLower === 'submitted' || statusLower === 'interested';
+                  const isUnderReview = statusLower === 'under_review' || statusLower === 'under review';
+                  const isApproved = statusLower === 'approved';
+                  const isRejected = statusLower === 'rejected';
+
+                  return (
+                    <tr key={String(student.applicationId)} className={table.row}>
+                      <td className="p-3 font-semibold text-slate-900">{student.name || 'Hidden'}</td>
+                      <td className="p-3">{String(student.courseName || '-')}</td>
+                      <td className="p-3">{String(student.branchName || '-')}</td>
+                      <td className="p-3">
+                        <StatusBadge status={student.status} />
+                      </td>
+                      <td className="p-3 text-slate-500">{formatDate(student.appliedDate)}</td>
+                      <td className="p-3 text-right">
+                        {isSubmitted && (
+                          <button
+                            type="button"
+                            onClick={() => handleRequestAccess(student.applicationId)}
+                            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-sm"
+                          >
+                            Request Student Details Access
+                          </button>
+                        )}
+                        {isUnderReview && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 border border-amber-200">
+                            Awaiting Admin Approval
+                          </span>
+                        )}
+                        {isApproved && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudent(student)}
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-blue-700 shadow-sm"
+                          >
+                            View Details
+                          </button>
+                        )}
+                        {isRejected && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800 border border-red-200">
+                            Access Rejected
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </section>
       </div>
+
+      {selectedStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-slate-100 flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Application Details</p>
+                <h3 className="text-xl font-bold text-slate-900 mt-0.5">{selectedStudent.name}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedStudent(null)}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-slate-400 hover:text-slate-600 transition text-sm font-semibold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 flex-1">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Contact Details</h4>
+                <div className="grid gap-4 sm:grid-cols-3 text-sm">
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Email Address</p>
+                    <p className="mt-1 font-semibold text-slate-900 truncate">{selectedStudent.email || '-'}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Mobile Number</p>
+                    <p className="mt-1 font-semibold text-slate-900">{selectedStudent.mobile || '-'}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Gender / DOB</p>
+                    <p className="mt-1 font-semibold text-slate-900">
+                      {selectedStudent.gender || '-'} / {selectedStudent.dateOfBirth ? formatDate(selectedStudent.dateOfBirth) : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Current Address</h4>
+                <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-sm">
+                  <p className="font-semibold text-slate-900">{selectedStudent.address || '-'}</p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Academic details</h4>
+                <div className="grid gap-4 sm:grid-cols-3 text-sm">
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Qualification</p>
+                    <p className="mt-1 font-semibold text-slate-900">{selectedStudent.education || '-'}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Board</p>
+                    <p className="mt-1 font-semibold text-slate-900">{selectedStudent.board || '-'}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Percentage (10th/12th)</p>
+                    <p className="mt-1 font-semibold text-slate-900">
+                      {selectedStudent.percentage != null ? `${selectedStudent.percentage}%` : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Student Documents</h4>
+                {!selectedStudent.documents || selectedStudent.documents.length === 0 ? (
+                  <p className="text-sm text-slate-500 italic">No documents uploaded.</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {selectedStudent.documents.map((doc: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900 capitalize">{doc.documentType.replace('_', ' ')}</p>
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                            {doc.isVerified ? '✓ Verified' : 'Awaiting verification'}
+                          </span>
+                        </div>
+                        {doc.fileUrl && (
+                          <a
+                            href={doc.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-blue-700 hover:border-blue-200 transition shadow-sm"
+                          >
+                            View
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end rounded-b-2xl">
+              <button
+                type="button"
+                onClick={() => setSelectedStudent(null)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
@@ -362,5 +529,47 @@ function AssetUploadCard({
         ) : null}
       </div>
     </div>
+  );
+}
+
+function formatDate(value?: string) {
+  if (!value) return '-';
+  return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const s = String(status).trim().toLowerCase();
+  if (s === 'submitted' || s === 'interested') {
+    return (
+      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
+        Submitted
+      </span>
+    );
+  }
+  if (s === 'under review' || s === 'under_review') {
+    return (
+      <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 border border-amber-200 animate-pulse">
+        Under Review
+      </span>
+    );
+  }
+  if (s === 'approved') {
+    return (
+      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 border border-emerald-200">
+        Approved
+      </span>
+    );
+  }
+  if (s === 'rejected') {
+    return (
+      <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 border border-red-200">
+        Rejected
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700 border border-slate-200">
+      {status}
+    </span>
   );
 }

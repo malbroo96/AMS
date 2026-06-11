@@ -17,3 +17,7 @@ export const updateApplicationStatus = (
   id: string,
   data: { status: ApplicationStatus; remarks?: string }
 ) => api.put(`/applications/${id}/status`, data);
+
+export const getApplicationHistory = (id: string) =>
+  api.get<{ success: boolean; data: { status: string; remarks: string | null; createdAt: string }[] }>(`/applications/${id}/history`);
+

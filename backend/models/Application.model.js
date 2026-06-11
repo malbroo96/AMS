@@ -30,7 +30,7 @@ const ApplicationModel = {
         col.CollegeName AS school_name,
         col.CollegeID AS school_id,
         col.Email AS school_email,
-        col.City AS school_city,
+        cp.City AS school_city,
         c.CourseName AS course_name,
         b.BranchName AS branch_name,
         cc.AnnualFee AS fees,
@@ -45,6 +45,7 @@ const ApplicationModel = {
       FROM dbo.Applications a
       INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = a.CollegeCourseID
       INNER JOIN dbo.Colleges col ON col.CollegeID = cc.CollegeID
+      LEFT JOIN dbo.CollegeProfiles cp ON cp.CollegeID = col.CollegeID
       INNER JOIN dbo.Courses c ON c.CourseID = cc.CourseID
       INNER JOIN dbo.Branches b ON b.BranchID = cc.BranchID
       INNER JOIN dbo.Students st ON st.StudentID = a.StudentID
@@ -151,32 +152,37 @@ const ApplicationModel = {
 
     const where = conditions.join(' AND ');
     const data = await request.query(`
-      SELECT 
-        a.ApplicationID AS id,
-        a.StudentID AS student_id,
-        cc.CollegeCourseID AS college_course_id,
-        a.CurrentStatus AS status,
-        a.Remarks AS remarks,
-        a.CreatedAt AS applied_date,
-        a.CreatedAt AS created_at,
-        a.UpdatedAt AS updated_at,
-        col.CollegeName AS school_name,
-        col.CollegeID AS school_id,
-        col.City AS school_city,
-        c.CourseName AS course_name,
-        b.BranchName AS branch_name,
-        (sp.FirstName + ' ' + sp.LastName) AS student_name,
-        sp.Email AS student_email
-      FROM dbo.Applications a
-      INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = a.CollegeCourseID
-      INNER JOIN dbo.Colleges col ON col.CollegeID = cc.CollegeID
-      INNER JOIN dbo.Courses c ON c.CourseID = cc.CourseID
-      INNER JOIN dbo.Branches b ON b.BranchID = cc.BranchID
-      INNER JOIN dbo.Students st ON st.StudentID = a.StudentID
-      LEFT JOIN dbo.StudentProfiles sp ON sp.StudentID = st.StudentID
-      WHERE ${where}
-      ORDER BY a.CreatedAt DESC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      WITH PagedApplications AS (
+        SELECT 
+          a.ApplicationID AS id,
+          a.StudentID AS student_id,
+          cc.CollegeCourseID AS college_course_id,
+          a.CurrentStatus AS status,
+          a.Remarks AS remarks,
+          a.CreatedAt AS applied_date,
+          a.CreatedAt AS created_at,
+          a.UpdatedAt AS updated_at,
+          col.CollegeName AS school_name,
+          col.CollegeID AS school_id,
+          cp.City AS school_city,
+          c.CourseName AS course_name,
+          b.BranchName AS branch_name,
+          (sp.FirstName + ' ' + sp.LastName) AS student_name,
+          sp.Email AS student_email,
+          ROW_NUMBER() OVER (ORDER BY a.CreatedAt DESC) AS RowNum
+        FROM dbo.Applications a
+        INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = a.CollegeCourseID
+        INNER JOIN dbo.Colleges col ON col.CollegeID = cc.CollegeID
+        LEFT JOIN dbo.CollegeProfiles cp ON cp.CollegeID = col.CollegeID
+        INNER JOIN dbo.Courses c ON c.CourseID = cc.CourseID
+        INNER JOIN dbo.Branches b ON b.BranchID = cc.BranchID
+        INNER JOIN dbo.Students st ON st.StudentID = a.StudentID
+        LEFT JOIN dbo.StudentProfiles sp ON sp.StudentID = st.StudentID
+        WHERE ${where}
+      )
+      SELECT * FROM PagedApplications
+      WHERE RowNum > @offset AND RowNum <= (@offset + @limit)
+      ORDER BY RowNum
     `);
 
     const countReq = pool.request();

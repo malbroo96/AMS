@@ -21,6 +21,7 @@ const AdminColleges = lazy(() => import('./pages/admin/AdminColleges').then((m) 
 const AdminStudents = lazy(() => import('./pages/admin/AdminStudents').then((m) => ({ default: m.AdminStudents })));
 const AdminPermissions = lazy(() => import('./pages/admin/AdminPermissions').then((m) => ({ default: m.AdminPermissions })));
 const CollegeProfileAdmin = lazy(() => import('./pages/college/CollegeProfileAdmin').then((m) => ({ default: m.default })));
+const ApplyAdmission = lazy(() => import('./pages/student/ApplyAdmission').then((m) => ({ default: m.ApplyAdmission })));
 
 function PageLoader() {
   return (
@@ -47,6 +48,7 @@ function App() {
               <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                 <Route path="/dashboard/student" element={<StudentDashboard />} />
                 <Route path="/dashboard/student/profile" element={<StudentProfile />} />
+                <Route path="/dashboard/student/apply" element={<ApplyAdmission />} />
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={['college']} />}>
