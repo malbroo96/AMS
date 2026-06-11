@@ -1,0 +1,345 @@
+{
+  "users": [
+    {
+      "id": "0b06a9a6-5fab-4d02-a685-40eca886f4e7",
+      "name": "System Admin",
+      "email": "admin@23",
+      "password": "$2b$12$FfL7JTHE7U8uZPcePcepseB09lAWgtUcttz69bMJ31psVXpBuqFwW",
+      "role": "admin",
+      "phone": null,
+      "is_approved": 1,
+      "created_at": "2026-05-19T04:55:04.869Z"
+    },
+    {
+      "id": "c2e555ef-36f5-4b75-84b3-bd916e7e204b",
+      "name": "sku",
+      "email": "sku@gmail.in",
+      "password": "$2b$12$OPyjq54kux828Wx3V2swAOM.uos9l1NM56AmCnCOoNw8uXM/N4c52",
+      "role": "college",
+      "phone": null,
+      "is_approved": 1,
+      "created_at": "2026-05-19T05:01:19.872Z"
+    },
+    {
+      "id": "f2505cbe-61ba-4e3a-ae2a-46786acefe08",
+      "name": "demo",
+      "email": "demo@gmail.com",
+      "password": "$2b$12$8XPtLXe8Qj0dgoylMNXbgOepvQSd.12KRq2/CtWltTI03BOVl3582",
+      "role": "student",
+      "phone": "8179897110",
+      "is_approved": 1,
+      "created_at": "2026-05-19T05:09:26.239Z"
+    },
+    {
+      "id": "78dc2911-b741-4fcf-b77d-9ba1957b619e",
+      "name": "demo2",
+      "email": "demo2@gmail.com",
+      "password": "$2b$12$dJBGZcBKI9.PaUGqs89a9OYzADXHK5s1mQon2ZvUH3swfZm.R/Po.",
+      "role": "student",
+      "phone": "6366908429",
+      "is_approved": 1,
+      "created_at": "2026-05-19T05:32:39.722Z"
+    },
+    {
+      "id": "006ed2cc-d055-4995-b2ce-3417fdccc165",
+      "name": "ALTS",
+      "email": "alts@gmail.in",
+      "password": "$2b$12$dBfN1cnuMkX/YRCU/d5HqOi1c1lNTicEe/SMN6dJIcZxvjdpKGCvC",
+      "role": "college",
+      "phone": null,
+      "is_approved": 1,
+      "created_at": "2026-05-19T08:56:12.877Z"
+    },
+    {
+      "id": "31b533ef-6ea9-463a-9876-3303b44e392b",
+      "name": "SRIT",
+      "email": "srit@gmail.in",
+      "password": "$2b$12$jTVUKwPOVouR1x4geOZWIOt7YIr5jJSiccUNwNVn1pvaNksYywMQC",
+      "role": "college",
+      "phone": null,
+      "is_approved": 1,
+      "created_at": "2026-05-19T09:01:30.063Z"
+    },
+    {
+      "id": "89e25d90-fa19-41e3-ad88-b61e735ebe76",
+      "name": "amal",
+      "email": "as@gmail.com",
+      "password": "$2b$12$5D55nwXNmuRp13ozI/DEHeC6sYQgh6uqF2AnMC1A9Yd43ja/FbryG",
+      "role": "student",
+      "phone": "8129015022",
+      "is_approved": 1,
+      "created_at": "2026-05-19T09:17:26.473Z"
+    },
+    {
+      "id": "3ef431f3-1df6-4e72-917f-c680d010ea63",
+      "name": "PVKK",
+      "email": "pvkk@gmail.in",
+      "password": "$2b$12$S2YXlOI4PysxbpfQQibHgO9WkoxuyEuJJR3pdXb01tMXvXCpftSzS",
+      "role": "college",
+      "phone": null,
+      "is_approved": 1,
+      "created_at": "2026-05-19T09:21:34.282Z"
+    },
+    {
+      "id": "cd6fc82f-2c82-48aa-a605-94300af0fd7e",
+      "name": "CMRIT",
+      "email": "cmrit@gmai.in",
+      "password": "$2b$12$nldvoqVQ5nHw4YgtLSH1A.fg5hJtkwhR4mY5fipucNhghaUEucIZG",
+      "role": "college",
+      "phone": null,
+      "is_approved": 1,
+      "created_at": "2026-05-19T09:48:59.415Z"
+    },
+    {
+      "id": "a982f2d5-d3c5-4cf7-8ccc-10d7596d9e6a",
+      "name": "Prashant",
+      "email": "prashant.jha@t-a-g.co",
+      "password": "$2b$12$fJor0JI9qzluh2sSjWmo5.6i1oqEy5R5F3GHqcU7TvGURw3GES5cu",
+      "role": "student",
+      "phone": "9742935300",
+      "is_approved": 1,
+      "created_at": "2026-05-19T12:38:59.770Z"
+    }
+  ],
+  "students": [
+    {
+      "id": "f2505cbe-61ba-4e3a-ae2a-46786acefe08",
+      "userId": "f2505cbe-61ba-4e3a-ae2a-46786acefe08",
+      "name": "demo",
+      "address": "1,32,ban",
+      "mobile": "8179897110",
+      "email": "demo@gmail.com",
+      "gender": "male",
+      "dateOfBirth": "2026-05-08T00:00:00.000Z",
+      "education": "10th",
+      "interestedCollege": "",
+      "profileVisible": false,
+      "createdAt": "2026-05-19T05:09:26.239Z"
+    },
+    {
+      "id": "78dc2911-b741-4fcf-b77d-9ba1957b619e",
+      "userId": "78dc2911-b741-4fcf-b77d-9ba1957b619e",
+      "name": "demo2",
+      "address": "1-35,band",
+      "mobile": "6366908429",
+      "email": "demo2@gmail.com",
+      "gender": "female",
+      "dateOfBirth": "2026-04-29T00:00:00.000Z",
+      "education": "8 th",
+      "interestedCollege": "PVKK",
+      "profileVisible": false,
+      "createdAt": "2026-05-19T05:32:39.722Z"
+    },
+    {
+      "id": "89e25d90-fa19-41e3-ad88-b61e735ebe76",
+      "userId": "89e25d90-fa19-41e3-ad88-b61e735ebe76",
+      "name": "amal",
+      "address": "vatha",
+      "mobile": "8129015022",
+      "email": "as@gmail.com",
+      "gender": "male",
+      "dateOfBirth": "2003-04-03T00:00:00.000Z",
+      "education": "gy",
+      "interestedCollege": "monti",
+      "profileVisible": false,
+      "createdAt": "2026-05-19T09:17:26.473Z"
+    },
+    {
+      "id": "a982f2d5-d3c5-4cf7-8ccc-10d7596d9e6a",
+      "userId": "a982f2d5-d3c5-4cf7-8ccc-10d7596d9e6a",
+      "name": "Prashant",
+      "address": "Blr",
+      "mobile": "9742935300",
+      "email": "prashant.jha@t-a-g.co",
+      "gender": "male",
+      "dateOfBirth": "2019-01-24T00:00:00.000Z",
+      "education": "Grade 12",
+      "interestedCollege": "ALTS",
+      "profileVisible": false,
+      "createdAt": "2026-05-19T12:38:59.770Z"
+    }
+  ],
+  "colleges": [
+    {
+      "id": "72c0d74d-b5e0-444d-b671-4e0150ee8639",
+      "userId": "c2e555ef-36f5-4b75-84b3-bd916e7e204b",
+      "collegeName": "sku",
+      "email": "sku@gmail.in",
+      "createdByAdmin": "0b06a9a6-5fab-4d02-a685-40eca886f4e7",
+      "status": "pending",
+      "createdAt": "2026-05-19T05:01:19.876Z"
+    },
+    {
+      "id": "ebc6cdd0-874b-4de6-b2d9-b67dc9efbf6a",
+      "userId": "006ed2cc-d055-4995-b2ce-3417fdccc165",
+      "collegeName": "ALTS",
+      "email": "alts@gmail.in",
+      "createdByAdmin": "0b06a9a6-5fab-4d02-a685-40eca886f4e7",
+      "status": "approved",
+      "createdAt": "2026-05-19T08:56:12.881Z"
+    },
+    {
+      "id": "3291da60-5004-46e6-9a94-34ecd67ed115",
+      "userId": "31b533ef-6ea9-463a-9876-3303b44e392b",
+      "collegeName": "SRIT",
+      "email": "srit@gmail.in",
+      "createdByAdmin": "0b06a9a6-5fab-4d02-a685-40eca886f4e7",
+      "status": "approved",
+      "createdAt": "2026-05-19T09:01:30.067Z"
+    },
+    {
+      "id": "f9ceb123-eb82-4c2e-b146-7d925371b134",
+      "userId": "3ef431f3-1df6-4e72-917f-c680d010ea63",
+      "collegeName": "PVKK",
+      "email": "pvkk@gmail.in",
+      "createdByAdmin": "0b06a9a6-5fab-4d02-a685-40eca886f4e7",
+      "status": "approved",
+      "createdAt": "2026-05-19T09:21:34.285Z"
+    },
+    {
+      "id": "005e6b83-b4d6-498e-b1bf-76f731109cae",
+      "userId": "cd6fc82f-2c82-48aa-a605-94300af0fd7e",
+      "collegeName": "CMRIT",
+      "email": "cmrit@gmai.in",
+      "createdByAdmin": "0b06a9a6-5fab-4d02-a685-40eca886f4e7",
+      "status": "pending",
+      "createdAt": "2026-05-19T09:48:59.419Z"
+    }
+  ],
+  "interests": [
+    {
+      "id": "4755c84d-2136-4b3a-b242-be19af1381e9",
+      "studentId": "78dc2911-b741-4fcf-b77d-9ba1957b619e",
+      "collegeId": "72c0d74d-b5e0-444d-b671-4e0150ee8639",
+      "status": "Approved",
+      "approvedByAdmin": true,
+      "createdAt": "2026-05-19T09:02:24.557Z"
+    },
+    {
+      "id": "c029bf22-0d67-43d6-92ac-a496948d1fdd",
+      "studentId": "78dc2911-b741-4fcf-b77d-9ba1957b619e",
+      "collegeId": "3291da60-5004-46e6-9a94-34ecd67ed115",
+      "status": "Interested",
+      "approvedByAdmin": false,
+      "createdAt": "2026-05-19T09:19:53.175Z"
+    },
+    {
+      "id": "5005dc89-da5a-4470-ba8a-502e07efdff7",
+      "studentId": "a982f2d5-d3c5-4cf7-8ccc-10d7596d9e6a",
+      "collegeId": "ebc6cdd0-874b-4de6-b2d9-b67dc9efbf6a",
+      "status": "Approved",
+      "approvedByAdmin": true,
+      "createdAt": "2026-05-19T12:39:31.685Z"
+    },
+    {
+      "id": "10e6569a-8389-4ce3-b92f-66e74450bb17",
+      "studentId": "78dc2911-b741-4fcf-b77d-9ba1957b619e",
+      "collegeId": "f9ceb123-eb82-4c2e-b146-7d925371b134",
+      "status": "Interested",
+      "approvedByAdmin": false,
+      "createdAt": "2026-05-19T13:02:14.706Z"
+    }
+  ],
+  "activities": [
+    {
+      "id": "4bd21ae1-7741-427f-88c7-d4abefc2aeae",
+      "message": "Granted student profile access for ALTS",
+      "createdAt": "2026-05-19T13:04:05.279Z"
+    },
+    {
+      "id": "86af1c25-6371-4d74-b18a-7b2d439de0d1",
+      "message": "demo2 marked interest in PVKK",
+      "createdAt": "2026-05-19T13:02:14.706Z"
+    },
+    {
+      "id": "ca23b064-7a4d-467f-b0d6-32fc632bdf0d",
+      "message": "Prashant marked interest in ALTS",
+      "createdAt": "2026-05-19T12:39:31.685Z"
+    },
+    {
+      "id": "66b57a91-b64d-4cb3-91e8-f273626fce5a",
+      "message": "Student registered: Prashant",
+      "createdAt": "2026-05-19T12:38:59.773Z"
+    },
+    {
+      "id": "2a017db0-8ed6-4d7c-8d81-32985c3270a3",
+      "message": "student account created for prashant.jha@t-a-g.co",
+      "createdAt": "2026-05-19T12:38:59.770Z"
+    },
+    {
+      "id": "e706b37b-6216-4190-bbde-ed335e3e2b3c",
+      "message": "College updated: sku",
+      "createdAt": "2026-05-19T11:44:45.084Z"
+    },
+    {
+      "id": "e64c5fcb-0946-4372-af2e-054ef2abe8d9",
+      "message": "Admin created college account: CMRIT",
+      "createdAt": "2026-05-19T09:48:59.419Z"
+    },
+    {
+      "id": "79ee30e0-1f5b-4a89-9195-e0e38f7872a5",
+      "message": "college account created for cmrit@gmai.in",
+      "createdAt": "2026-05-19T09:48:59.416Z"
+    },
+    {
+      "id": "8ff7e026-c4fd-4a6b-b303-e59eb0de7252",
+      "message": "College updated: PVKK",
+      "createdAt": "2026-05-19T09:21:43.868Z"
+    },
+    {
+      "id": "99debe79-b06f-44ca-870b-825df74e6b5d",
+      "message": "College updated: PVKK",
+      "createdAt": "2026-05-19T09:21:41.929Z"
+    },
+    {
+      "id": "24b0d71a-c918-4fbe-b1c4-66b8ffe13498",
+      "message": "Admin created college account: PVKK",
+      "createdAt": "2026-05-19T09:21:34.285Z"
+    },
+    {
+      "id": "ca26d278-4946-4b99-a31e-0dc72ae761f9",
+      "message": "college account created for pvkk@gmail.in",
+      "createdAt": "2026-05-19T09:21:34.282Z"
+    },
+    {
+      "id": "dda296b1-d684-49eb-9647-361a1a742347",
+      "message": "demo2 marked interest in SRIT",
+      "createdAt": "2026-05-19T09:19:53.175Z"
+    },
+    {
+      "id": "fa1c9be5-8ad6-4d13-bb5a-45855356338f",
+      "message": "Student registered: amal",
+      "createdAt": "2026-05-19T09:17:26.476Z"
+    },
+    {
+      "id": "22b3ea52-d668-4c6d-92a7-67325ab552a8",
+      "message": "student account created for as@gmail.com",
+      "createdAt": "2026-05-19T09:17:26.473Z"
+    },
+    {
+      "id": "a5618751-fbe4-4d1d-868a-329f945c53a4",
+      "message": "Granted student profile access for sku",
+      "createdAt": "2026-05-19T09:17:07.670Z"
+    },
+    {
+      "id": "fabe1f9e-3b92-4402-a059-924636e25190",
+      "message": "Revoked student profile access for sku",
+      "createdAt": "2026-05-19T09:17:07.139Z"
+    },
+    {
+      "id": "2519b112-4d4d-4aaa-98c8-4b384a16d191",
+      "message": "Granted student profile access for sku",
+      "createdAt": "2026-05-19T09:17:06.160Z"
+    },
+    {
+      "id": "a4ec5ad7-9cbf-40b6-9be6-7a882d30e03e",
+      "message": "Revoked student profile access for sku",
+      "createdAt": "2026-05-19T09:17:05.529Z"
+    },
+    {
+      "id": "c4d1f2b1-4148-43c3-b078-4c1e22a72b8d",
+      "message": "Granted student profile access for sku",
+      "createdAt": "2026-05-19T09:17:04.224Z"
+    }
+  ]
+}

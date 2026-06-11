@@ -162,7 +162,12 @@ const amsSqlService = {
     const stud = await pool
       .request()
       .input('userId', sql.Int, user.id)
-      .query('SELECT * FROM Students WHERE UserID = @userId');
+      .query(`
+        SELECT s.StudentID, (sp.FirstName + ' ' + sp.LastName) AS Name
+        FROM Students s
+        LEFT JOIN StudentProfiles sp ON sp.StudentID = s.StudentID
+        WHERE s.UserID = @userId
+      `);
     const studentRow = stud.recordset[0];
     if (!studentRow) throw new ApiError('Student profile not found', 404);
 
@@ -173,29 +178,49 @@ const amsSqlService = {
     const collegeRow = col.recordset[0];
     if (!collegeRow) throw new ApiError('College not found or not approved', 404);
 
+    let courseRes = await pool
+      .request()
+      .input('cid', sql.Int, collegeId)
+      .query('SELECT TOP 1 CollegeCourseID FROM dbo.CollegeCourses WHERE CollegeID = @cid');
+    let collegeCourseId = courseRes.recordset[0]?.CollegeCourseID;
+    if (!collegeCourseId) {
+      let defaultCourse = await pool.request().query('SELECT TOP 1 CourseID FROM dbo.Courses');
+      let courseId = defaultCourse.recordset[0]?.CourseID;
+      if (!courseId) {
+        let insCourse = await pool.request().query("INSERT INTO dbo.Courses (CourseName, CourseCode) OUTPUT inserted.CourseID VALUES ('General Course', 'GEN')");
+        courseId = insCourse.recordset[0].CourseID;
+      }
+      let defaultBranch = await pool.request().query('SELECT TOP 1 BranchID FROM dbo.Branches');
+      let branchId = defaultBranch.recordset[0]?.BranchID;
+      if (!branchId) {
+        let insBranch = await pool.request().input('cid', sql.Int, courseId).query("INSERT INTO dbo.Branches (CourseID, BranchName, BranchCode) OUTPUT inserted.BranchID VALUES (@cid, 'General Branch', 'GEN')");
+        branchId = insBranch.recordset[0].BranchID;
+      }
+      let insCc = await pool.request()
+        .input('cid', sql.Int, collegeId)
+        .input('courseId', sql.Int, courseId)
+        .input('branchId', sql.Int, branchId)
+        .query("INSERT INTO dbo.CollegeCourses (CollegeID, CourseID, BranchID, DurationYears, TotalSeats, AnnualFee) OUTPUT inserted.CollegeCourseID VALUES (@cid, @courseId, @branchId, 4.0, 60, 50000.00)");
+      collegeCourseId = insCc.recordset[0].CollegeCourseID;
+    }
+
     const exists = await pool
       .request()
       .input('sid', sql.Int, studentRow.StudentID)
-      .input('cid', sql.Int, collegeId)
-      .query('SELECT ApplicationID FROM StudentApplications WHERE StudentID = @sid AND CollegeID = @cid');
+      .input('ccid', sql.Int, collegeCourseId)
+      .query('SELECT ApplicationID FROM dbo.Applications WHERE StudentID = @sid AND CollegeCourseID = @ccid');
     if (exists.recordset[0]) return this.getStudentDashboard(user);
 
     await pool
       .request()
       .input('sid', sql.Int, studentRow.StudentID)
-      .input('cid', sql.Int, collegeId)
+      .input('ccid', sql.Int, collegeCourseId)
       .query(`
-        INSERT INTO StudentApplications (StudentID, CollegeID, Status, ApprovedByAdmin)
-        VALUES (@sid, @cid, 'Interested', 0)
+        INSERT INTO dbo.Applications (StudentID, CollegeCourseID, CurrentStatus)
+        VALUES (@sid, @ccid, 'Interested')
       `);
 
-    await pool
-      .request()
-      .input('sid', sql.Int, studentRow.StudentID)
-      .input('ic', sql.Int, collegeId)
-      .query('UPDATE Students SET InterestedCollege = @ic WHERE StudentID = @sid');
-
-    await addActivity(`${studentRow.Name} marked interest in ${collegeRow.CollegeName}`);
+    await addActivity(`${studentRow.Name || 'Student'} marked interest in ${collegeRow.CollegeName}`);
     return this.getStudentDashboard(user);
   },
 
@@ -204,7 +229,24 @@ const amsSqlService = {
     const stud = await pool
       .request()
       .input('userId', sql.Int, user.id)
-      .query('SELECT * FROM Students WHERE UserID = @userId');
+      .query(`
+        SELECT 
+          s.StudentID,
+          s.UserID,
+          (sp.FirstName + ' ' + sp.LastName) AS Name,
+          sp.AddressLine1 AS Address,
+          sp.Mobile,
+          sp.Email,
+          sp.Gender,
+          sp.DateOfBirth,
+          sad.Qualification AS Education,
+          (SELECT TOP 1 cc.CollegeID FROM dbo.Applications a INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = a.CollegeCourseID WHERE a.StudentID = s.StudentID ORDER BY a.CreatedAt DESC) AS InterestedCollege,
+          (CASE WHEN EXISTS (SELECT 1 FROM dbo.Applications a WHERE a.StudentID = s.StudentID AND a.CurrentStatus = 'Approved') THEN 1 ELSE 0 END) AS ProfileVisible
+        FROM Students s
+        LEFT JOIN StudentProfiles sp ON sp.StudentID = s.StudentID
+        LEFT JOIN StudentAcademicDetails sad ON sad.StudentID = s.StudentID
+        WHERE s.UserID = @userId
+      `);
     const studentRow = stud.recordset[0];
     if (!studentRow) throw new ApiError('Student profile not found', 404);
     const student = mapAmsStudentRow(studentRow);
@@ -213,10 +255,12 @@ const amsSqlService = {
       .request()
       .input('sid', sql.Int, studentRow.StudentID)
       .query(`
-        SELECT sa.ApplicationID, sa.StudentID, sa.CollegeID, sa.Status, sa.ApprovedByAdmin, sa.CreatedAt,
+        SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status, 
+               (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
                c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.CreatedByAdminUserID
-        FROM StudentApplications sa
-        INNER JOIN Colleges c ON c.CollegeID = sa.CollegeID
+        FROM dbo.Applications sa
+        INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
+        INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
         WHERE sa.StudentID = @sid
         ORDER BY sa.CreatedAt DESC
       `);
@@ -316,12 +360,17 @@ const amsSqlService = {
       .request()
       .input('cid', sql.Int, collegeRow.CollegeID)
       .query(`
-        SELECT sa.ApplicationID, sa.StudentID, sa.CollegeID, sa.Status, sa.ApprovedByAdmin, sa.CreatedAt,
-               st.Name, st.Address, st.Mobile, st.Email, st.Gender, st.DateOfBirth, st.Education,
+        SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status, 
+               (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
+               (sp.FirstName + ' ' + sp.LastName) AS Name, sp.AddressLine1 AS Address, sp.Mobile, sp.Email, sp.Gender, sp.DateOfBirth,
+               sad.Qualification AS Education,
                st.StudentID AS StuId, st.UserID AS StuUserID
-        FROM StudentApplications sa
-        INNER JOIN Students st ON st.StudentID = sa.StudentID
-        WHERE sa.CollegeID = @cid
+        FROM dbo.Applications sa
+        INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
+        INNER JOIN dbo.Students st ON st.StudentID = sa.StudentID
+        LEFT JOIN dbo.StudentProfiles sp ON sp.StudentID = st.StudentID
+        LEFT JOIN dbo.StudentAcademicDetails sad ON sad.StudentID = st.StudentID
+        WHERE cc.CollegeID = @cid
         ORDER BY sa.CreatedAt DESC
       `);
 
@@ -359,8 +408,8 @@ const amsSqlService = {
     const [students, colleges, apps, pending, logs] = await Promise.all([
       pool.request().query('SELECT COUNT(*) AS n FROM Students'),
       pool.request().query('SELECT COUNT(*) AS n FROM Colleges'),
-      pool.request().query('SELECT COUNT(*) AS n FROM StudentApplications'),
-      pool.request().query('SELECT COUNT(*) AS n FROM StudentApplications WHERE ApprovedByAdmin = 0'),
+      pool.request().query('SELECT COUNT(*) AS n FROM dbo.Applications'),
+      pool.request().query("SELECT COUNT(*) AS n FROM dbo.Applications WHERE CurrentStatus <> 'Approved'"),
       pool.request().query(`
         SELECT TOP 20 LogID AS id, Message AS message, CreatedAt AS createdAt
         FROM ActivityLogs ORDER BY CreatedAt DESC
@@ -381,12 +430,31 @@ const amsSqlService = {
 
   async adminStudents() {
     const pool = await getPool();
-    const studs = await pool.request().query('SELECT * FROM Students ORDER BY Name');
+    const studs = await pool.request().query(`
+      SELECT 
+        s.StudentID,
+        s.UserID,
+        (sp.FirstName + ' ' + sp.LastName) AS Name,
+        sp.AddressLine1 AS Address,
+        sp.Mobile,
+        sp.Email,
+        sp.Gender,
+        sp.DateOfBirth,
+        sad.Qualification AS Education,
+        (SELECT TOP 1 cc.CollegeID FROM dbo.Applications a INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = a.CollegeCourseID WHERE a.StudentID = s.StudentID ORDER BY a.CreatedAt DESC) AS InterestedCollege,
+        (CASE WHEN EXISTS (SELECT 1 FROM dbo.Applications a WHERE a.StudentID = s.StudentID AND a.CurrentStatus = 'Approved') THEN 1 ELSE 0 END) AS ProfileVisible
+      FROM Students s
+      LEFT JOIN StudentProfiles sp ON sp.StudentID = s.StudentID
+      LEFT JOIN StudentAcademicDetails sad ON sad.StudentID = s.StudentID
+      ORDER BY Name
+    `);
     const apps = await pool.request().query(`
-      SELECT sa.ApplicationID, sa.StudentID, sa.CollegeID, sa.Status, sa.ApprovedByAdmin, sa.CreatedAt,
+      SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status, 
+             (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
              c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.CreatedByAdminUserID
-      FROM StudentApplications sa
-      INNER JOIN Colleges c ON c.CollegeID = sa.CollegeID
+      FROM dbo.Applications sa
+      INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
+      INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
     `);
 
     return studs.recordset.map((sr) => {
@@ -551,29 +619,39 @@ const amsSqlService = {
     const id = parseInt(String(idRaw), 10);
     if (!Number.isFinite(id)) throw new ApiError('Student not found', 404);
 
-    const cur = await pool.request().input('id', sql.Int, id).query('SELECT * FROM Students WHERE StudentID = @id');
+    const cur = await pool.request().input('id', sql.Int, id).query(`
+      SELECT s.UserID, (sp.FirstName + ' ' + sp.LastName) AS Name
+      FROM Students s
+      LEFT JOIN StudentProfiles sp ON sp.StudentID = s.StudentID
+      WHERE s.StudentID = @id
+    `);
     const row = cur.recordset[0];
     if (!row) throw new ApiError('Student not found', 404);
 
-    await pool.request().input('sid', sql.Int, id).query('DELETE FROM StudentApplications WHERE StudentID = @sid');
+    await pool.request().input('sid', sql.Int, id).query('DELETE FROM dbo.Applications WHERE StudentID = @sid');
     await pool.request().input('sid', sql.Int, id).query('DELETE FROM Students WHERE StudentID = @sid');
     await pool.request().input('uid', sql.Int, row.UserID).query('DELETE FROM Users WHERE UserID = @uid');
 
-    await addActivity(`Admin deleted student: ${row.Name}`);
+    await addActivity(`Admin deleted student: ${row.Name || 'Student'}`);
     return { message: 'Student deleted successfully' };
   },
 
   async adminInterests() {
     const pool = await getPool();
     const rows = await pool.request().query(`
-      SELECT sa.ApplicationID, sa.StudentID, sa.CollegeID, sa.Status, sa.ApprovedByAdmin, sa.CreatedAt AS AppCreatedAt,
-             st.UserID AS StudentUserID, st.Name AS StudentName, st.Address AS StudentAddress, st.Mobile AS StudentMobile,
-             st.Email AS StudentEmail, st.Gender AS StudentGender, st.DateOfBirth AS StudentDOB, st.Education AS StudentEducation,
-             st.InterestedCollege, st.ProfileVisible,
+      SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status, 
+             (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt AS AppCreatedAt,
+             st.UserID AS StudentUserID, (sp.FirstName + ' ' + sp.LastName) AS StudentName, sp.AddressLine1 AS StudentAddress, sp.Mobile AS StudentMobile,
+             sp.Email AS StudentEmail, sp.Gender AS StudentGender, sp.DateOfBirth AS StudentDOB, sad.Qualification AS StudentEducation,
+             (SELECT TOP 1 cc2.CollegeID FROM dbo.Applications a2 INNER JOIN dbo.CollegeCourses cc2 ON cc2.CollegeCourseID = a2.CollegeCourseID WHERE a2.StudentID = st.StudentID ORDER BY a2.CreatedAt DESC) AS InterestedCollege,
+             (CASE WHEN EXISTS (SELECT 1 FROM dbo.Applications a3 WHERE a3.StudentID = st.StudentID AND a3.CurrentStatus = 'Approved') THEN 1 ELSE 0 END) AS ProfileVisible,
              c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.CreatedByAdminUserID, c.UserID AS CollegeUserId, c.CreatedAt AS CollegeCreatedAt
-      FROM StudentApplications sa
-      INNER JOIN Students st ON st.StudentID = sa.StudentID
-      INNER JOIN Colleges c ON c.CollegeID = sa.CollegeID
+      FROM dbo.Applications sa
+      INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
+      INNER JOIN dbo.Students st ON st.StudentID = sa.StudentID
+      LEFT JOIN dbo.StudentProfiles sp ON sp.StudentID = st.StudentID
+      LEFT JOIN dbo.StudentAcademicDetails sad ON sad.StudentID = st.StudentID
+      INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
       ORDER BY sa.CreatedAt DESC
     `);
     return rows.recordset.map((row) => {
@@ -751,7 +829,7 @@ const amsSqlService = {
     const uid = row.UserID;
     const name = row.CollegeName;
 
-    await pool.request().input('cid', sql.Int, id).query('DELETE FROM StudentApplications WHERE CollegeID = @cid');
+    await pool.request().input('cid', sql.Int, id).query('DELETE FROM dbo.Applications WHERE CollegeCourseID IN (SELECT CollegeCourseID FROM dbo.CollegeCourses WHERE CollegeID = @cid)');
     await pool.request().input('cid', sql.Int, id).query('DELETE FROM Colleges WHERE CollegeID = @cid');
     await pool.request().input('uid', sql.Int, uid).query('DELETE FROM Users WHERE UserID = @uid');
 
@@ -765,9 +843,12 @@ const amsSqlService = {
     if (!Number.isFinite(id)) throw new ApiError('Interest request not found', 404);
 
     const cur = await pool.request().input('id', sql.Int, id).query(`
-      SELECT sa.*, c.CollegeName
-      FROM StudentApplications sa
-      INNER JOIN Colleges c ON c.CollegeID = sa.CollegeID
+      SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status,
+             (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
+             c.CollegeName
+      FROM dbo.Applications sa
+      INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
+      INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
       WHERE sa.ApplicationID = @id
     `);
     const row = cur.recordset[0];
@@ -778,9 +859,8 @@ const amsSqlService = {
     await pool
       .request()
       .input('id', sql.Int, id)
-      .input('ap', sql.Bit, appr ? 1 : 0)
-      .input('st', sql.VarChar(30), status)
-      .query('UPDATE StudentApplications SET ApprovedByAdmin = @ap, Status = @st WHERE ApplicationID = @id');
+      .input('st', sql.VarChar(50), status)
+      .query('UPDATE dbo.Applications SET CurrentStatus = @st, UpdatedAt = SYSUTCDATETIME() WHERE ApplicationID = @id');
 
     await addActivity(
       `${appr ? 'Granted' : 'Revoked'} student profile access for ${row.CollegeName}`
@@ -790,10 +870,12 @@ const amsSqlService = {
       .request()
       .input('id', sql.Int, id)
       .query(`
-        SELECT sa.ApplicationID, sa.StudentID, sa.CollegeID, sa.Status, sa.ApprovedByAdmin, sa.CreatedAt,
+        SELECT sa.ApplicationID, sa.StudentID, cc.CollegeID, sa.CurrentStatus AS Status,
+               (CASE WHEN sa.CurrentStatus = 'Approved' THEN 1 ELSE 0 END) AS ApprovedByAdmin, sa.CreatedAt,
                c.CollegeName, c.Email AS CollegeEmail, c.Status AS CollegeStatus, c.CreatedByAdminUserID
-        FROM StudentApplications sa
-        INNER JOIN Colleges c ON c.CollegeID = sa.CollegeID
+        FROM dbo.Applications sa
+        INNER JOIN dbo.CollegeCourses cc ON cc.CollegeCourseID = sa.CollegeCourseID
+        INNER JOIN dbo.Colleges c ON c.CollegeID = cc.CollegeID
         WHERE sa.ApplicationID = @id
       `);
     const r = after.recordset[0];

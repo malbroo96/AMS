@@ -3,24 +3,22 @@ import { button, form, shell } from '../ui/designTokens';
 export interface CollegeFiltersState {
   locations: string[];
   courses: string[];
-  minRating: number;
+  branch: string;
   maxFees: number;
-  studyModes: string[];
 }
 
 export const defaultCollegeFilters: CollegeFiltersState = {
   locations: [],
   courses: [],
-  minRating: 4,
+  branch: '',
   maxFees: 250000,
-  studyModes: [],
 };
 
 interface CollegeFiltersProps {
   filters: CollegeFiltersState;
   locationOptions: string[];
   courseOptions: string[];
-  studyModeOptions: string[];
+  branchOptions: string[];
   onChange: (filters: CollegeFiltersState) => void;
   onReset: () => void;
 }
@@ -57,13 +55,11 @@ function FilterGroup({ title, values, selected, onToggle }: FilterGroupProps) {
   );
 }
 
-const ratingOptions = [4, 4.3, 4.5, 4.7];
-
 export function CollegeFilters({
   filters,
   locationOptions,
   courseOptions,
-  studyModeOptions,
+  branchOptions,
   onChange,
   onReset,
 }: CollegeFiltersProps) {
@@ -102,22 +98,28 @@ export function CollegeFilters({
         />
 
         <div className={`border-t pt-5 ${shell.divider}`}>
-          <h3 className="text-sm font-bold text-slate-900">Rating</h3>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {ratingOptions.map((rating) => (
-              <button
-                key={rating}
-                type="button"
-                onClick={() => onChange({ ...filters, minRating: rating })}
-                className={`rounded-md border px-2 py-2 text-sm font-bold transition ${
-                  filters.minRating === rating
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
-                }`}
-              >
-                {rating}+
-              </button>
-            ))}
+          <h3 className="text-sm font-bold text-slate-900">Branch</h3>
+          <div className="mt-3">
+            <select
+              value={filters.branch}
+              onChange={(event) => onChange({ ...filters, branch: event.target.value })}
+              className={`${form.input} w-full bg-white`}
+            >
+              {branchOptions.length === 0 ? (
+                <option value="" disabled>
+                  No Branches Available
+                </option>
+              ) : (
+                <>
+                  <option value="">All Branches</option>
+                  {branchOptions.map((branch) => (
+                    <option key={branch} value={branch}>
+                      {branch}
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>
           </div>
         </div>
 
@@ -138,13 +140,6 @@ export function CollegeFilters({
             className={`mt-4 ${form.range}`}
           />
         </div>
-
-        <FilterGroup
-          title="Study mode"
-          values={studyModeOptions}
-          selected={filters.studyModes}
-          onToggle={(value) => onChange({ ...filters, studyModes: toggleValue(filters.studyModes, value) })}
-        />
       </div>
     </aside>
   );

@@ -91,7 +91,7 @@ const mapAmsStudentRow = (row) => {
   return {
     id: String(row.StudentID),
     userId: String(row.UserID),
-    name: row.Name,
+    name: row.Name || (row.FirstName ? `${row.FirstName} ${row.LastName}`.trim() : ''),
     address: row.Address ?? '',
     mobile: row.Mobile ?? '',
     email: row.Email,
