@@ -15,9 +15,9 @@ async function seed() {
       name: 'Super Admin',
       email,
       phone: '9999999999',
-      password: await bcrypt.hash('SuperAdmin@123', 12),
-      role: 'super_admin',
-      isApproved: true,
+      passwordHash: await bcrypt.hash('SuperAdmin@123', 12),
+      role: 'admin',
+      isActive: true,
     });
     console.log('Super admin created:', email, '/ SuperAdmin@123');
   }

@@ -8,7 +8,7 @@ const mapUser = (row) => {
     email: row.email,
     phone: row.phone,
     role: row.role,
-    isApproved: !!row.is_approved,
+    isActive: !!row.isActive,
     createdAt: row.created_at,
   };
 };
@@ -56,6 +56,9 @@ const mapCourse = (row) => {
     fees: row.fees,
     seats: row.seats,
     createdAt: row.created_at,
+    courseId: row.RealCourseID,
+    branchId: row.BranchID,
+    branchName: row.BranchName,
   };
 };
 

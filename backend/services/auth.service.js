@@ -9,7 +9,9 @@ const SALT_ROUNDS = 12;
 
 const sanitize = (user) => {
   if (!user) return null;
-  const { password, ...rest } = user;
+
+  const { passwordHash, ...rest } = user;
+
   return rest;
 };
 
@@ -28,15 +30,15 @@ const authService = {
     if (existing) throw new ApiError('Email already registered', 409);
 
     const hashed = await bcrypt.hash(password, SALT_ROUNDS);
-    const isApproved = requestedRole !== 'college';
+    const isActive = requestedRole !== 'college';
 
     const user = await UserModel.create({
       name,
       email: normalizedEmail,
       phone,
-      password: hashed,
+      passwordHash: hashed,
       role: requestedRole,
-      isApproved,
+      isActive,
     });
 
     if (requestedRole === 'student') {
@@ -69,10 +71,10 @@ const authService = {
     const user = await UserModel.findByEmail(normalizedEmail);
     if (!user) throw new ApiError('Invalid email or password', 401);
 
-    const match = await bcrypt.compare(password, user.password);
+    const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) throw new ApiError('Invalid email or password', 401);
 
-    if (user.role === 'college' && !user.is_approved) {
+    if (user.role === 'college' && !user.isActive) {
       throw new ApiError('Account pending approval by super admin', 403);
     }
 

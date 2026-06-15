@@ -1,12 +1,12 @@
-const ApiError = require('../utils/ApiError');
-const { mapSchool, mapCourse } = require('../utils/mappers');
 const SchoolModel = require('../models/School.model');
 const CourseModel = require('../models/Course.model');
+const ApiError = require('../utils/ApiError');
+const { mapSchool, mapCourse } = require('../utils/mappers');
 
-const schoolService = {
+module.exports = {
   async list(query) {
-    const page = parseInt(query.page, 10) || 1;
-    const limit = parseInt(query.limit, 10) || 10;
+    const page = query.page ? parseInt(query.page, 10) : 1;
+    const limit = query.limit ? parseInt(query.limit, 10) : 10;
     const { rows, total } = await SchoolModel.list({ search: query.search, page, limit });
     return {
       schools: rows.map(mapSchool),
@@ -28,54 +28,54 @@ const schoolService = {
     };
   },
 
-  async create(data, createdBy) {
-    const school = await SchoolModel.create({ ...data, createdBy });
+  async create(body, adminId) {
+    const school = await SchoolModel.create({ ...body, adminId });
     return mapSchool(school);
   },
 
-  async update(id, data) {
-    await schoolService.getById(id);
-    const school = await SchoolModel.update(id, data);
-    return mapSchool(school);
+  async update(id, body) {
+    const updated = await SchoolModel.update(id, body);
+    if (!updated) throw new ApiError('School not found', 404);
+    return mapSchool(updated);
   },
 
   async remove(id) {
-    await schoolService.getById(id);
+    const school = await SchoolModel.findById(id);
+    if (!school) throw new ApiError('School not found', 404);
     await SchoolModel.delete(id);
     return { message: 'School deleted successfully' };
   },
 
   async getCourses(schoolId) {
-    await schoolService.getById(schoolId);
     const courses = await CourseModel.findBySchool(schoolId);
     return courses.map(mapCourse);
   },
 
-  async addCourse(schoolId, data) {
-    await schoolService.getById(schoolId);
-    const course = await CourseModel.create({ schoolId, ...data });
+  async addCourse(schoolId, body) {
+    const course = await CourseModel.create({ ...body, schoolId });
     return mapCourse(course);
   },
 
-  async updateCourse(courseId, data, schoolId) {
-    const course = await CourseModel.findById(courseId);
-    if (!course) throw new ApiError('Course not found', 404);
-    if (schoolId && course.school_id !== schoolId) {
-      throw new ApiError('Course does not belong to your school', 403);
+  async updateCourse(courseId, body, schoolId) {
+    if (schoolId) {
+      const course = await CourseModel.findById(courseId);
+      if (!course || String(course.school_id) !== String(schoolId)) {
+        throw new ApiError('Unauthorized or course not found', 403);
+      }
     }
-    const updated = await CourseModel.update(courseId, data);
+    const updated = await CourseModel.update(courseId, body);
+    if (!updated) throw new ApiError('Course not found', 404);
     return mapCourse(updated);
   },
 
   async deleteCourse(courseId, schoolId) {
-    const course = await CourseModel.findById(courseId);
-    if (!course) throw new ApiError('Course not found', 404);
-    if (schoolId && course.school_id !== schoolId) {
-      throw new ApiError('Course does not belong to your school', 403);
+    if (schoolId) {
+      const course = await CourseModel.findById(courseId);
+      if (!course || String(course.school_id) !== String(schoolId)) {
+        throw new ApiError('Unauthorized or course not found', 403);
+      }
     }
     await CourseModel.delete(courseId);
     return { message: 'Course deleted successfully' };
-  },
+  }
 };
-
-module.exports = schoolService;

@@ -1,10 +1,9 @@
 const bcrypt = require('bcryptjs');
 const ApiError = require('../utils/ApiError');
-const UserModel = require('../models/userStore');
+const UserModel = require('../models/User.model');
 const SchoolModel = require('../models/School.model');
 const StudentModel = require('../models/Student.model');
 const ApplicationModel = require('../models/Application.model');
-const NotificationModel = require('../models/Notification.model');
 const { mapUser } = require('../utils/mappers');
 
 const adminService = {
@@ -23,10 +22,10 @@ const adminService = {
       SchoolModel.count(),
       StudentModel.count(),
       ApplicationModel.count(),
-      ApplicationModel.countByStatus('pending'),
-      ApplicationModel.countByStatus('approved'),
-      ApplicationModel.countByStatus('rejected'),
-      UserModel.countByRole('school_admin'),
+      ApplicationModel.countByStatus('Submitted'),
+      ApplicationModel.countByStatus('Approved'),
+      ApplicationModel.countByStatus('Rejected'),
+      UserModel.countByRole('college'),
       ApplicationModel.countByStatusGrouped(),
       ApplicationModel.recent(5),
     ]);
@@ -78,9 +77,9 @@ const adminService = {
       name,
       email: normalizedEmail,
       phone,
-      password: hashed,
-      role: 'school_admin',
-      isApproved: false,
+      passwordHash: hashed,
+      role: 'college',
+      isActive: false,
     });
 
     if (schoolId) {
@@ -94,27 +93,22 @@ const adminService = {
 
   async approveSchoolAdmin(adminId) {
     const user = await UserModel.findById(adminId);
-    if (!user || user.role !== 'school_admin') {
+    if (!user || user.role !== 'college') {
       throw new ApiError('School admin not found', 404);
     }
-    await UserModel.update(adminId, { isApproved: true });
-    await NotificationModel.create({
-      userId: adminId,
-      title: 'Account Approved',
-      message: 'Your school admin account has been approved. You can now log in.',
-    });
+    await UserModel.update(adminId, { isActive: true });
     const updated = await UserModel.findById(adminId);
     return mapUser(updated);
   },
 
   async deleteSchoolAdmin(id) {
     const user = await UserModel.findById(id);
-    if (!user || user.role !== 'school_admin') {
+    if (!user || user.role !== 'college') {
       throw new ApiError('School admin not found', 404);
     }
     const school = await SchoolModel.findByAdminId(id);
     if (school) {
-      await SchoolModel.setAdmin(school.id, null);
+      await SchoolModel.update(school.id, { adminId: null });
     }
     await UserModel.delete(id);
     return { message: 'School admin deleted successfully' };

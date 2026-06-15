@@ -1,6 +1,6 @@
 const ApiError = require('../utils/ApiError');
 const { verifyToken } = require('../utils/jwt');
-const UserModel = require('../models/userStore');
+const UserModel = require('../models/User.model');
 
 /**
  * Validates JWT and attaches user (without password) to req.user.
@@ -20,20 +20,19 @@ const authMiddleware = async (req, res, next) => {
       throw new ApiError('User not found', 401);
     }
 
-    // School admins must be approved before accessing protected routes
-    if (user.role === 'school_admin' && !user.is_approved) {
-      // is_approved column — 0 until super admin approves
+    // College admins must be approved (isActive) before accessing protected routes
+    if (user.role === 'college' && !user.isActive) {
       throw new ApiError('Your account is pending super admin approval', 403);
     }
 
-    const { password, ...rest } = user;
+    const { passwordHash, ...rest } = user;
     req.user = {
       id: rest.id,
       name: rest.name,
       email: rest.email,
       phone: rest.phone,
       role: rest.role,
-      isApproved: !!rest.is_approved,
+      isActive: !!rest.isActive,
       createdAt: rest.created_at,
     };
     next();

@@ -7,6 +7,8 @@ const { collegeAssetUploadMiddleware } = require('../middleware/upload');
 const router = express.Router();
 
 router.get('/colleges', authMiddleware, amsController.listColleges);
+router.get('/courses', authMiddleware, amsController.listAllCourses);
+router.get('/branches', authMiddleware, amsController.listAllBranches);
 router.get('/college-search', amsController.searchCollegeProfiles);
 router.get('/college-search/:collegeId', amsController.publicCollegeProfile);
 router.post('/college-search/:collegeId/enquiries', amsController.createCollegeEnquiry);

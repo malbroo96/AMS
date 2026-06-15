@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getStudentDashboard, markCollegeInterest, searchCollegeProfiles } from '../../api/ams';
+import { getApplicationHistory } from '../../api/applications';
 import {
   CollegeFilters,
   defaultCollegeFilters,
@@ -94,10 +95,28 @@ export function StudentDashboard() {
     () => [...new Set(allColleges.flatMap((college) => college.courses))].sort(),
     [allColleges]
   );
-  const branchOptions = useMemo(
-    () => [...new Set(allColleges.flatMap((college) => college.branches || []))].sort(),
-    [allColleges]
-  );
+  const branchOptions = useMemo(() => {
+    const courseSearchTerm = searchValues.course.trim().toLowerCase();
+    const selectedCourses = filters.courses.map((c) => c.toLowerCase());
+    const hasCourseFilter = selectedCourses.length > 0 || courseSearchTerm.length > 0;
+
+    if (hasCourseFilter) {
+      const filteredBranches = allColleges.flatMap((college) => {
+        const pairs = college.courseBranchPairs || [];
+        return pairs
+          .filter((pair) => {
+            const pairCourseLower = pair.courseName.toLowerCase();
+            const matchesCheckbox = selectedCourses.length === 0 || selectedCourses.includes(pairCourseLower);
+            const matchesSearch = !courseSearchTerm || pairCourseLower.includes(courseSearchTerm);
+            return matchesCheckbox && matchesSearch;
+          })
+          .map((pair) => pair.branchName);
+      });
+      return [...new Set(filteredBranches)].sort();
+    }
+
+    return [...new Set(allColleges.flatMap((college) => college.branches || []))].sort();
+  }, [allColleges, filters.courses, searchValues.course]);
   const filteredColleges = useMemo(() => {
     const collegeName = normalizeSearch(searchValues.collegeName);
     const course = normalizeSearch(searchValues.course);
@@ -171,6 +190,12 @@ export function StudentDashboard() {
   }, []);
 
   useEffect(() => {
+    if (filters.branch && !branchOptions.includes(filters.branch)) {
+      setFilters((prev) => ({ ...prev, branch: '' }));
+    }
+  }, [branchOptions, filters.branch]);
+
+  useEffect(() => {
     let active = true;
     const handle = window.setTimeout(() => {
       setLoading(true);
@@ -226,10 +251,22 @@ export function StudentDashboard() {
     }
   };
 
-  const handleApplyNow = (collegeId: string) => {
+  const handleApplyNow = (
+    collegeId: string,
+    collegeCourseId?: string,
+    courseId?: string,
+    branchId?: string
+  ) => {
     const college = colleges.find((item) => item.id === collegeId);
     showToast(`Starting application for ${college?.name ?? 'college'}`, 'success');
-    navigate('/dashboard/student/apply');
+    
+    const params = new URLSearchParams();
+    params.set('collegeId', collegeId);
+    if (collegeCourseId) params.set('collegeCourseId', collegeCourseId);
+    if (courseId) params.set('courseId', courseId);
+    if (branchId) params.set('branchId', branchId);
+    
+    navigate(`/dashboard/student/apply?${params.toString()}`);
   };
 
   const handleViewDetails = (collegeId: string) => {
@@ -339,25 +376,7 @@ export function StudentDashboard() {
             ) : (
               <div className="mt-5 grid gap-3">
                 {interests.map((interest) => (
-                  <article
-                    key={interest.id}
-                    className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
-                  >
-                    <div>
-                      <h3 className="font-bold text-slate-900">
-                        {interest.college?.collegeName || interest.school?.collegeName || 'College'}
-                      </h3>
-                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                        Submitted {formatDate(interest.submittedAt || interest.createdAt)}
-                      </p>
-                    </div>
-                    <Status value={interest.status} />
-                    <span
-                      className={`text-sm font-bold ${interest.approvedByAdmin ? 'text-emerald-700' : 'text-amber-700'}`}
-                    >
-                      {interest.approvedByAdmin ? 'Profile access granted' : 'Awaiting admin approval'}
-                    </span>
-                  </article>
+                  <ApplicationCard key={interest.id} interest={interest} />
                 ))}
               </div>
             )}
@@ -531,5 +550,113 @@ function Detail({ label, value }: DetailProps) {
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p>
       <p className="mt-1 text-sm font-bold text-slate-900">{value}</p>
     </div>
+  );
+}
+
+interface HistoryItem {
+  status: string;
+  remarks: string | null;
+  createdAt: string;
+}
+
+function ApplicationCard({ interest }: { interest: Interest }) {
+  const [expanded, setExpanded] = useState(false);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (expanded && history.length === 0) {
+      setLoading(true);
+      setError(false);
+      getApplicationHistory(interest.id)
+        .then((res) => {
+          setHistory(res.data.data);
+        })
+        .catch((err) => {
+          console.error(err);
+          setError(true);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [expanded, interest.id, history.length]);
+
+  return (
+    <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition shadow-sm hover:shadow-md">
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+        <div>
+          <h3 className="font-bold text-slate-900">
+            {interest.college?.collegeName || interest.school?.collegeName || 'College'}
+          </h3>
+          {(interest.courseName || interest.branchName) && (
+            <p className="mt-1 text-sm font-medium text-slate-600">
+              {interest.courseName && <span>Course: {interest.courseName}</span>}
+              {interest.courseName && interest.branchName && <span className="mx-2 text-slate-300">|</span>}
+              {interest.branchName && <span>Branch: {interest.branchName}</span>}
+            </p>
+          )}
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Submitted {formatDate(interest.submittedAt || interest.createdAt)}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Status value={interest.status} />
+          <span
+            className={`text-sm font-bold ${interest.approvedByAdmin ? 'text-emerald-700' : 'text-amber-700'}`}
+          >
+            {interest.approvedByAdmin ? 'Profile access granted' : 'Awaiting admin approval'}
+          </span>
+        </div>
+        <div>
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-blue-700"
+          >
+            {expanded ? 'Hide Timeline' : 'View Timeline'}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-4 border-t border-slate-200/80 pt-4">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Application History Timeline</h4>
+          {loading && <p className="text-xs text-slate-500">Loading timeline...</p>}
+          {error && <p className="text-xs text-red-500">Failed to load history.</p>}
+          {!loading && !error && history.length === 0 && (
+            <p className="text-xs text-slate-500">No history details found.</p>
+          )}
+          {!loading && !error && history.length > 0 && (
+            <div className="relative pl-6 border-l-2 border-slate-200/60 ml-2 space-y-5">
+              {history.map((item, idx) => (
+                <div key={idx} className="relative">
+                  <div className="absolute -left-[31px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-blue-600 border border-white">
+                    <span className="text-[9px]">✓</span>
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-slate-900 capitalize">{item.status.replace('_', ' ')}</span>
+                    <span className="ml-2 text-xs font-medium text-slate-400">
+                      {new Intl.DateTimeFormat('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      }).format(new Date(item.createdAt))}
+                    </span>
+                    {item.remarks && (
+                      <p className="mt-1 text-xs text-slate-500 italic">"{item.remarks}"</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </article>
   );
 }

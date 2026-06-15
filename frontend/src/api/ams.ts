@@ -190,3 +190,9 @@ export const deleteCollege = (id: string) =>
 
 export const setInterestPermission = (id: string, approvedByAdmin: boolean) =>
   api.patch(`/ams/admin/interests/${id}/permission`, { approvedByAdmin });
+
+export const getCoursesList = () =>
+  api.get<{ success: boolean; data: Array<{ CourseID: number; CourseName: string; CourseCode?: string }> }>('/ams/courses');
+
+export const getBranchesList = () =>
+  api.get<{ success: boolean; data: Array<{ BranchID: number; CourseID: number; BranchName: string; BranchCode?: string }> }>('/ams/branches');

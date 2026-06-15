@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createApplication } from '../../api/applications';
 import { getSchools, getCourses } from '../../api/schools';
 import { uploadDocument } from '../../api/admin';
@@ -31,6 +31,7 @@ const STEPS = ['Student Details', 'Academic Details', 'School Selection', 'Docum
 
 export function ApplyAdmission() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showToast } = useToast();
   const [step, setStep] = useState(0);
   const [schools, setSchools] = useState<School[]>([]);
@@ -41,19 +42,59 @@ export function ApplyAdmission() {
   const { register, handleSubmit, watch, setValue } = useForm<FormData>();
 
   const schoolId = watch('schoolId');
+  const queryCollegeId = searchParams.get('collegeId');
+  const queryCollegeCourseId = searchParams.get('collegeCourseId');
+  const queryCourseId = searchParams.get('courseId');
+  const queryBranchId = searchParams.get('branchId');
 
   useEffect(() => {
-    getSchools({ limit: 100 }).then((res) => setSchools(res.data.data.schools));
-  }, []);
+    getSchools({ limit: 100 }).then((res) => {
+      setSchools(res.data.data.schools);
+      if (queryCollegeId) {
+        setValue('schoolId', queryCollegeId);
+      }
+    });
+  }, [queryCollegeId, setValue]);
 
   useEffect(() => {
     if (schoolId) {
-      getCourses(schoolId).then((res) => setCourses(res.data.data));
-      setValue('courseId', '');
+      getCourses(schoolId).then((res) => {
+        const loadedCourses = res.data.data;
+        setCourses(loadedCourses);
+
+        let targetCourseId = '';
+
+        if (queryCollegeCourseId) {
+          const exists = loadedCourses.some((c) => String(c.id) === String(queryCollegeCourseId));
+          if (exists) {
+            targetCourseId = queryCollegeCourseId;
+          }
+        }
+
+        if (!targetCourseId && queryCourseId && queryBranchId) {
+          const match = loadedCourses.find(
+            (c) => String(c.courseId) === String(queryCourseId) && String(c.branchId) === String(queryBranchId)
+          );
+          if (match) {
+            targetCourseId = match.id;
+          }
+        }
+
+        if (!targetCourseId && queryCourseId) {
+          const match = loadedCourses.find((c) => String(c.courseId) === String(queryCourseId));
+          if (match) {
+            targetCourseId = match.id;
+          }
+        }
+
+        if (targetCourseId) {
+          setValue('courseId', targetCourseId);
+        }
+      });
     } else {
       setCourses([]);
     }
-  }, [schoolId, setValue]);
+  }, [schoolId, queryCollegeCourseId, queryCourseId, queryBranchId, setValue]);
 
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>, documentType: string) => {
     const file = e.target.files?.[0];

@@ -32,7 +32,7 @@ const schoolSchema = Joi.object({
   board: Joi.string().allow('', null),
   description: Joi.string().allow('', null),
   logoUrl: Joi.string().uri().allow('', null),
-  adminId: Joi.string().uuid().allow(null),
+  adminId: Joi.alternatives().try(Joi.number().integer().min(1), Joi.string().regex(/^\d+$/)).allow(null),
 });
 
 const courseSchema = Joi.object({
@@ -42,8 +42,8 @@ const courseSchema = Joi.object({
 });
 
 const applicationSchema = Joi.object({
-  schoolId: Joi.string().uuid().required(),
-  courseId: Joi.string().uuid().required(),
+  schoolId: Joi.alternatives().try(Joi.number().integer().min(1), Joi.string().regex(/^\d+$/)).required(),
+  courseId: Joi.alternatives().try(Joi.number().integer().min(1), Joi.string().regex(/^\d+$/)).required(),
   studentDetails: Joi.object({
     dob: Joi.date().iso().allow(null),
     gender: Joi.string().valid('male', 'female', 'other').allow(null),
@@ -77,7 +77,7 @@ const adminUserSchema = Joi.object({
   email: Joi.string().email().required(),
   phone: Joi.string().min(10).max(15).required(),
   password: Joi.string().min(6).max(128).required(),
-  schoolId: Joi.string().uuid().allow(null),
+  schoolId: Joi.alternatives().try(Joi.number().integer().min(1), Joi.string().regex(/^\d+$/)).allow(null),
 });
 
 module.exports = {

@@ -31,7 +31,7 @@ async function main() {
     .input('pw', sql.NVarChar(255), hash)
     .input('name', sql.NVarChar(150), 'System Admin')
     .query(`
-      INSERT INTO Users (RoleID, Email, Password, FullName, Phone, IsApproved)
+      INSERT INTO Users (RoleID, Email, PasswordHash, FullName, Phone, IsActive)
       VALUES (@rid, @email, @pw, @name, NULL, 1)
     `);
   console.log('Created admin:', email, '/ password:', plain);

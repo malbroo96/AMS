@@ -14,6 +14,7 @@ export interface CollegeExplorerItem {
   logoTone: string;
   admissionStatus: string;
   highlights: string[];
+  courseBranchPairs: Array<{ courseName: string; branchName: string }>;
 }
 
 const logoTones = [
@@ -67,7 +68,14 @@ export function mapProfileToExplorerCollege(profile: CollegeProfileData, index =
   const locationParts = [profile.location?.fullAddress, city, profile.location?.state].filter(Boolean);
   const feesFrom = numberValue(extra.feesFrom, Math.min(...courseFees));
 
-  const branches = Array.isArray(profile.branches) ? profile.branches : [];
+  const courseBranchPairs = rawCourses.map((c) => ({
+    courseName: stringValue(c.courseName || c.CourseName || c.name),
+    branchName: stringValue(c.branchName || c.BranchName || c.branch),
+  })).filter((c) => c.courseName && c.branchName);
+
+  const branches = Array.isArray(profile.branches) && profile.branches.length > 0
+    ? profile.branches
+    : [...new Set(courseBranchPairs.map((pair) => pair.branchName))];
 
   return {
     id: profile.id,
@@ -83,5 +91,6 @@ export function mapProfileToExplorerCollege(profile: CollegeProfileData, index =
     logoTone: logoTones[index % logoTones.length],
     admissionStatus: profile.status === 'approved' ? 'Applications open' : profile.status || 'Profile pending',
     highlights: highlights.length ? highlights.slice(0, 4) : ['Verified SQL profile'],
+    courseBranchPairs,
   };
 }

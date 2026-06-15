@@ -58,6 +58,8 @@ export interface Interest {
   college?: College;
   school?: College;
   course?: Course;
+  courseName?: string;
+  branchName?: string;
   documents?: Document[];
   student?: StudentProfile;
 }
@@ -65,7 +67,7 @@ export interface Interest {
 export type School = College;
 export type Student = StudentProfile;
 export type Application = Interest;
-export interface Course { id: string; schoolId: string; courseName: string; fees?: number | null; seats?: number | null; }
+export interface Course { id: string; schoolId: string; courseName: string; fees?: number | null; seats?: number | null; courseId?: string; branchId?: string; }
 export interface Document { id: string; applicationId: string; documentType: string; fileUrl: string; }
 
 export interface PaginatedResponse<T> {

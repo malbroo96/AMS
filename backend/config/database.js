@@ -15,7 +15,10 @@ const dbConfig = {
     trustServerCertificate: db.options.trustServerCertificate,
     cryptoCredentialsDetails: {
       minVersion: 'TLSv1',
-      ciphers: 'DEFAULT@SECLEVEL=1'
+
+
+      ciphers: 'DEFAULT@SECLEVEL=0'
+
     },
     ...(db.instanceName ? { instanceName: db.instanceName } : {}),
     ...(useTrustedConnection ? { trustedConnection: true } : {}),

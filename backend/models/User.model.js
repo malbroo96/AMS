@@ -1,114 +1,191 @@
-const { v4: uuidv4 } = require('uuid');
 const { sql, getPool } = require('../config/database');
+
+const toIntId = (raw) => {
+  if (raw === undefined || raw === null) return null;
+  const n = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
+  return Number.isFinite(n) ? n : null;
+};
+
+async function roleIdFor(pool, roleName) {
+  const r = await pool
+    .request()
+    .input('roleName', sql.VarChar(50), roleName)
+    .query('SELECT RoleID FROM Roles WHERE RoleName = @roleName');
+  const row = r.recordset[0];
+  if (!row) throw new Error(`Role not found in Roles: ${roleName}`);
+  return row.RoleID;
+}
+
+function shapeUser(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    passwordHash: row.passwordHash,
+    role: row.role,
+    isActive: !!row.isActive,
+    created_at: row.created_at,
+  };
+}
 
 const UserModel = {
   async findByEmail(email) {
     const pool = await getPool();
     const result = await pool
       .request()
-      .input('email', sql.NVarChar(255), email)
-      .query('SELECT * FROM Users WHERE email = @email');
-    return result.recordset[0] || null;
+      .input('email', sql.VarChar(255), email.trim().toLowerCase())
+      .query(`
+        SELECT u.UserID AS id, u.FullName AS [name], u.Email AS email, u.Phone AS phone,
+               u.PasswordHash AS passwordHash, LOWER(r.RoleName) AS role,
+               u.IsActive AS isActive, u.CreatedAt AS created_at
+        FROM Users u
+        INNER JOIN Roles r ON r.RoleID = u.RoleID
+        WHERE LOWER(u.Email) = LOWER(@email)
+      `);
+    return shapeUser(result.recordset[0]);
   },
 
-  async findById(id) {
-    console.log("Student Profile Update ID:", id);
-    console.log("Type:", typeof id);
+  async findById(rawId) {
+    const id = toIntId(rawId);
+    if (id == null) return null;
     const pool = await getPool();
     const result = await pool
       .request()
-      .input('id', sql.UniqueIdentifier, id)
-      .query('SELECT * FROM Users WHERE id = @id');
-    return result.recordset[0] || null;
-  },
-
-  async create({ name, email, password, role, phone, isApproved = true }) {
-    const id = uuidv4();
-    const pool = await getPool();
-    await pool
-      .request()
-      .input('id', sql.UniqueIdentifier, id)
-      .input('name', sql.NVarChar(100), name)
-      .input('email', sql.NVarChar(255), email)
-      .input('password', sql.NVarChar(255), password)
-      .input('role', sql.NVarChar(50), role)
-      .input('phone', sql.NVarChar(20), phone || null)
-      .input('is_approved', sql.Bit, isApproved ? 1 : 0)
+      .input('id', sql.Int, id)
       .query(`
-        INSERT INTO Users (id, name, email, password, role, phone, is_approved)
-        VALUES (@id, @name, @email, @password, @role, @phone, @is_approved)
+        SELECT u.UserID AS id, u.FullName AS [name], u.Email AS email, u.Phone AS phone,
+               u.PasswordHash AS passwordHash, LOWER(r.RoleName) AS role,
+               u.IsActive AS isActive, u.CreatedAt AS created_at
+        FROM Users u
+        INNER JOIN Roles r ON r.RoleID = u.RoleID
+        WHERE u.UserID = @id
       `);
-    return this.findById(id);
+    return shapeUser(result.recordset[0]);
   },
 
-  async update(id, fields) {
-    console.log("Student Profile Update ID:", id);
-    console.log("Type:", typeof id);
+  async create({ name, email, passwordHash, role, phone, isActive = true }) {
     const pool = await getPool();
-    const sets = [];
-    const request = pool.request().input('id', sql.UniqueIdentifier, id);
+    const rid = await roleIdFor(pool, role);
+    const result = await pool
+      .request()
+      .input('roleId', sql.Int, rid)
+      .input('email', sql.VarChar(255), email.trim().toLowerCase())
+      .input('passwordHash', sql.NVarChar(255), passwordHash)
+      .input('fullName', sql.NVarChar(150), name)
+      .input('phone', sql.NVarChar(30), phone || null)
+      .input('isActive', sql.Bit, isActive ? 1 : 0)
+      .query(`
+        INSERT INTO Users (RoleID, Email, PasswordHash, FullName, Phone, IsActive)
+        OUTPUT inserted.UserID
+        VALUES (@roleId, @email, @passwordHash, @fullName, @phone, @isActive)
+      `);
+    const newId = result.recordset[0].UserID;
+    return this.findById(newId);
+  },
 
+  async update(rawId, fields) {
+    const id = toIntId(rawId);
+    if (id == null) return null;
+    const pool = await getPool();
+    const req = pool.request().input('id', sql.Int, id);
+    const sets = [];
     if (fields.name !== undefined) {
-      sets.push('name = @name');
-      request.input('name', sql.NVarChar(100), fields.name);
+      sets.push('FullName = @fullName');
+      req.input('fullName', sql.NVarChar(150), fields.name);
     }
     if (fields.phone !== undefined) {
-      sets.push('phone = @phone');
-      request.input('phone', sql.NVarChar(20), fields.phone);
+      sets.push('Phone = @phone');
+      req.input('phone', sql.NVarChar(30), fields.phone);
     }
-    if (fields.isApproved !== undefined) {
-      sets.push('is_approved = @is_approved');
-      request.input('is_approved', sql.Bit, fields.isApproved ? 1 : 0);
+    if (fields.isActive !== undefined) {
+      sets.push('IsActive = @isActive');
+      req.input('isActive', sql.Bit, fields.isActive ? 1 : 0);
     }
-
+    if (fields.passwordHash !== undefined) {
+      sets.push('PasswordHash = @passwordHash');
+      req.input('passwordHash', sql.NVarChar(255), fields.passwordHash);
+    }
     if (!sets.length) return this.findById(id);
-    await request.query(`UPDATE Users SET ${sets.join(', ')} WHERE id = @id`);
+    await req.query(`UPDATE Users SET ${sets.join(', ')} WHERE UserID = @id`);
     return this.findById(id);
+  },
+
+  async delete(rawId) {
+    const id = toIntId(rawId);
+    if (id == null) return;
+    const pool = await getPool();
+    await pool.request().input('id', sql.Int, id).query('DELETE FROM Users WHERE UserID = @id');
+  },
+
+  async countByRole(role) {
+    const pool = await getPool();
+    const mapped = role === 'school_admin' ? 'college' : role;
+    const result = await pool
+      .request()
+      .input('roleName', sql.VarChar(50), mapped)
+      .query(`
+        SELECT COUNT(*) AS total
+        FROM Users u
+        INNER JOIN Roles r ON r.RoleID = u.RoleID
+        WHERE LOWER(r.RoleName) = LOWER(@roleName)
+      `);
+    return result.recordset[0].total;
   },
 
   async listSchoolAdmins({ search, page = 1, limit = 10 }) {
     const pool = await getPool();
     const offset = (page - 1) * limit;
-    let where = "role = 'school_admin'";
-    if (search) {
-      where += ' AND (name LIKE @search OR email LIKE @search)';
-    }
-    const request = pool
+    const collegeRoleId = await roleIdFor(pool, 'college');
+    const req = pool
       .request()
+      .input('collegeRoleId', sql.Int, collegeRoleId)
       .input('offset', sql.Int, offset)
       .input('limit', sql.Int, limit);
-    if (search) request.input('search', sql.NVarChar(255), `%${search}%`);
-
-    const data = await request.query(`
-      SELECT u.*, s.id AS school_id, s.school_name, s.city
-      FROM Users u
-      LEFT JOIN Schools s ON s.admin_id = u.id
-      WHERE ${where}
-      ORDER BY u.created_at DESC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+    let where = 'u.RoleID = @collegeRoleId';
+    if (search) {
+      where += ' AND (u.FullName LIKE @search OR u.Email LIKE @search)';
+      req.input('search', sql.NVarChar(255), `%${search}%`);
+    }
+    const data = await req.query(`
+      WITH PagedUsers AS (
+        SELECT
+          u.UserID AS id,
+          u.FullName AS [name],
+          u.Email AS email,
+          u.Phone AS phone,
+          'school_admin' AS role,
+          u.IsActive AS isActive,
+          u.CreatedAt AS created_at,
+          CAST(NULL AS UNIQUEIDENTIFIER) AS school_id,
+          CAST(NULL AS NVARCHAR(200)) AS school_name,
+          CAST(NULL AS NVARCHAR(100)) AS city,
+          ROW_NUMBER() OVER (ORDER BY u.CreatedAt DESC) AS RowNum
+        FROM Users u
+        WHERE ${where}
+      )
+      SELECT * FROM PagedUsers
+      WHERE RowNum > @offset AND RowNum <= (@offset + @limit)
+      ORDER BY RowNum
     `);
-
-    const countReq = pool.request();
+    const countReq = pool.request().input('collegeRoleId', sql.Int, collegeRoleId);
     if (search) countReq.input('search', sql.NVarChar(255), `%${search}%`);
     const count = await countReq.query(`
-      SELECT COUNT(*) AS total FROM Users WHERE ${where}
+      SELECT COUNT(*) AS total FROM Users u WHERE ${where}
     `);
-
-    return { rows: data.recordset, total: count.recordset[0].total };
-  },
-
-  async delete(id) {
-    const pool = await getPool();
-    await pool.request().input('id', sql.UniqueIdentifier, id).query('DELETE FROM Users WHERE id = @id');
-  },
-
-  async countByRole(role) {
-    const pool = await getPool();
-    const result = await pool
-      .request()
-      .input('role', sql.NVarChar(50), role)
-      .query('SELECT COUNT(*) AS total FROM Users WHERE role = @role');
-    return result.recordset[0].total;
+    return { rows: data.recordset.map((r) => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      phone: r.phone,
+      role: r.role,
+      isActive: !!r.isActive,
+      created_at: r.created_at,
+      school_id: r.school_id,
+      school_name: r.school_name,
+      city: r.city,
+    })), total: count.recordset[0].total };
   },
 };
 
