@@ -13,10 +13,28 @@ function isSharePointConfigured() {
   });
 }
 
+function validateSharePointConfig() {
+  const status = {};
+  requiredConfig.forEach((key) => {
+    const value = sharepoint[key];
+    status[key] = !!(value && !String(value).startsWith('YOUR_'));
+  });
+  return status;
+}
+
 function assertSharePointConfig() {
-  const missing = requiredConfig.filter((key) => !sharepoint[key]);
-  if (missing.length) {
-    throw new ApiError(`Missing SharePoint configuration: ${missing.join(', ')}`, 500);
+  const missingOrInvalid = requiredConfig.filter((key) => {
+    const value = sharepoint[key];
+    return !value || String(value).startsWith('YOUR_');
+  });
+  if (missingOrInvalid.length) {
+    const mapped = missingOrInvalid.map(
+      (key) => `SHAREPOINT_${key.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`
+    );
+    throw new ApiError(
+      `SharePoint is not configured. Missing or placeholder values for: ${mapped.join(', ')}`,
+      400
+    );
   }
 }
 
@@ -37,15 +55,24 @@ function getMsalClient() {
 }
 
 async function getAccessToken() {
-  const result = await getMsalClient().acquireTokenByClientCredential({
-    scopes: ['https://graph.microsoft.com/.default'],
-  });
+  assertSharePointConfig();
+  console.log('[DEBUG] [MSAL] Token acquisition start');
+  try {
+    const result = await getMsalClient().acquireTokenByClientCredential({
+      scopes: ['https://graph.microsoft.com/.default'],
+    });
 
-  if (!result?.accessToken) {
-    throw new ApiError('Unable to acquire Microsoft Graph access token', 500);
+    if (!result?.accessToken) {
+      console.error('[DEBUG] [MSAL] Token acquisition returned empty accessToken');
+      throw new ApiError('Unable to acquire Microsoft Graph access token', 401);
+    }
+
+    console.log('[DEBUG] [MSAL] Token acquisition success');
+    return result.accessToken;
+  } catch (error) {
+    console.error('[DEBUG] [MSAL] Token acquisition failure:', error.message || error);
+    throw new ApiError(`SharePoint MSAL authentication failed: ${error.message || error}`, 401);
   }
-
-  return result.accessToken;
 }
 
 function getGraphClient() {
@@ -65,4 +92,6 @@ module.exports = {
   getGraphClient,
   sharepointConfig: sharepoint,
   isSharePointConfigured,
+  validateSharePointConfig,
+  assertSharePointConfig,
 };

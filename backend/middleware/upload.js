@@ -1,23 +1,18 @@
-const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const ApiError = require('../utils/ApiError');
 const { upload } = require('../config/env');
 
-const uploadsPath = path.join(__dirname, '..', upload.dir);
-if (!fs.existsSync(uploadsPath)) {
-  fs.mkdirSync(uploadsPath, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsPath),
-  filename: (_req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}${path.extname(file.originalname)}`);
-  },
-});
-
-const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const allowedMimes = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'video/x-msvideo',
+  'video/mpeg',
+];
 
 const fileFilter = (_req, file, cb) => {
   if (!allowedMimes.includes(file.mimetype)) {
@@ -27,7 +22,7 @@ const fileFilter = (_req, file, cb) => {
 };
 
 const uploadMiddleware = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: { fileSize: upload.maxFileSizeMb * 1024 * 1024 },
 });
@@ -44,7 +39,7 @@ const collegeAssetFileFilter = (_req, file, cb) => {
 const collegeAssetUploadMiddleware = multer({
   storage: multer.memoryStorage(),
   fileFilter: collegeAssetFileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: upload.maxFileSizeMb * 1024 * 1024 },
 });
 
-module.exports = { uploadMiddleware, uploadsPath, collegeAssetUploadMiddleware };
+module.exports = { uploadMiddleware, collegeAssetUploadMiddleware };

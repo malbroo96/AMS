@@ -19,7 +19,6 @@
     "@azure/msal-node": "^5.2.3",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "bcryptjs": "^3.0.3",
-    "cloudinary": "^2.6.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

@@ -77,25 +77,16 @@ module.exports = {
   },
 
   upload: {
-    dir: process.env.UPLOAD_DIR || 'uploads',
     maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB, 10) || 5,
   },
 
   sharepoint: {
-    tenantId: process.env.TENANT_ID,
-    clientId: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
+    tenantId: process.env.SHAREPOINT_TENANT_ID || process.env.TENANT_ID,
+    clientId: process.env.SHAREPOINT_CLIENT_ID || process.env.CLIENT_ID,
+    clientSecret: process.env.SHAREPOINT_CLIENT_SECRET || process.env.CLIENT_SECRET,
     siteId: process.env.SHAREPOINT_SITE_ID,
     driveId: process.env.SHAREPOINT_DRIVE_ID,
     folder: process.env.SHAREPOINT_FOLDER || process.env.SHAREPOINT_ROOT_FOLDER || 'CollegeAssets',
-  },
-
-  cloudinary: {
-    useCloudinary: process.env.USE_CLOUDINARY === 'true',
-    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
-    apiKey: process.env.CLOUDINARY_API_KEY,
-    apiSecret: process.env.CLOUDINARY_API_SECRET,
-    folder: process.env.CLOUDINARY_FOLDER || 'eadmin-portal',
   },
 
   rateLimit: {

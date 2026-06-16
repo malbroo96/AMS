@@ -28,7 +28,7 @@ const authService = {
     if (existing) throw new ApiError('Email already registered', 409);
 
     const hashed = await bcrypt.hash(password, SALT_ROUNDS);
-    const isActive = requestedRole !== 'college';
+    const isActive = true;
 
     const user = await UserModel.create({
       name,
@@ -56,7 +56,8 @@ const authService = {
       user.college = await SchoolModel.create({
         schoolName: collegeName,
         email: normalizedEmail,
-        adminId: user.id
+        adminId: user.id,
+        status: 'pending'
       });
     }
 
@@ -72,8 +73,8 @@ const authService = {
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) throw new ApiError('Invalid email or password', 401);
 
-    if (user.role === 'college' && !user.isActive) {
-      throw new ApiError('Account pending approval by super admin', 403);
+    if (!user.isActive) {
+      throw new ApiError('Your account has been deactivated', 403);
     }
 
     const token = signToken({ id: user.id, role: user.role });

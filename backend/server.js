@@ -12,6 +12,9 @@ async function start() {
     console.log(`AMS MSSQL mode - database "${db.database}" on ${db.server}`);
     console.log('All users, students, and colleges are stored in SQL Server.');
 
+    const { validateSharePointConfig } = require('./config/sharepoint');
+    console.log('SharePoint configuration status:', validateSharePointConfig());
+
     app.listen(port, () => {
       console.log(`E-Admin API running on http://localhost:${port}`);
       console.log(`Health check: http://localhost:${port}/api/health`);

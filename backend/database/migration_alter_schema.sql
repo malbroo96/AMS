@@ -403,62 +403,62 @@ GO
 -- B. Migrate data from old StudentApplications table if it exists
 -- Note: In the old table, interests were mapped to CollegeID. Since CollegeCourses did not exist,
 -- we map to a default/dummy CollegeCourseID to satisfy FK/relational mappings.
-IF OBJECT_ID('dbo.StudentApplications', 'U') IS NOT NULL AND EXISTS (
-    SELECT 1 FROM dbo.StudentApplications WHERE NOT EXISTS (
-        SELECT 1 FROM dbo.Applications a WHERE a.StudentID = dbo.StudentApplications.StudentID
-    )
-)
+IF OBJECT_ID('dbo.StudentApplications', 'U') IS NOT NULL
 BEGIN
-    -- Find/Create a dummy CollegeCourseID to link to for historic applications
-    DECLARE @DummyCollegeCourseID INT;
-    SELECT TOP 1 @DummyCollegeCourseID = CollegeCourseID FROM dbo.CollegeCourses;
-
-    IF @DummyCollegeCourseID IS NULL
-    BEGIN
-        -- Insert dummy course and college course row to link to
-        DECLARE @DummyCourseID INT, @DummyBranchID INT, @DummyCollegeID INT;
-        
-        SELECT TOP 1 @DummyCourseID = CourseID FROM dbo.Courses;
-        IF @DummyCourseID IS NULL
-        BEGIN
-            INSERT INTO dbo.Courses (CourseName, CourseCode) VALUES ('General Course', 'GEN');
-            SET @DummyCourseID = SCOPE_IDENTITY();
-        END
-        
-        SELECT TOP 1 @DummyBranchID = BranchID FROM dbo.Branches;
-        IF @DummyBranchID IS NULL
-        BEGIN
-            INSERT INTO dbo.Branches (CourseID, BranchName, BranchCode) VALUES (@DummyCourseID, 'General Branch', 'GEN');
-            SET @DummyBranchID = SCOPE_IDENTITY();
-        END
-        
-        SELECT TOP 1 @DummyCollegeID = CollegeID FROM dbo.Colleges;
-        IF @DummyCollegeID IS NULL
-        BEGIN
-            -- Ensure a user exists for the default college
-            DECLARE @DefaultUserID INT;
-            SELECT TOP 1 @DefaultUserID = UserID FROM dbo.Users;
-            INSERT INTO dbo.Colleges (CollegeName, Email, UserID, Status) 
-            VALUES ('Default College', 'college@default.com', @DefaultUserID, 'approved');
-            SET @DummyCollegeID = SCOPE_IDENTITY();
-        END
-        
-        INSERT INTO dbo.CollegeCourses (CollegeID, CourseID, BranchID, DurationYears, TotalSeats, AnnualFee)
-        VALUES (@DummyCollegeID, @DummyCourseID, @DummyBranchID, 4.0, 60, 50000.00);
-        SET @DummyCollegeCourseID = SCOPE_IDENTITY();
-    END
-
     EXEC sp_executesql N'
-    INSERT INTO dbo.Applications (StudentID, CollegeCourseID, CurrentStatus, CreatedAt, UpdatedAt)
-    SELECT 
-        StudentID,
-        @DummyCollegeCourseID,
-        Status,
-        CreatedAt,
-        CreatedAt
-    FROM dbo.StudentApplications sa
-    WHERE NOT EXISTS (SELECT 1 FROM dbo.Applications a WHERE a.StudentID = sa.StudentID);
-    ', N'@DummyCollegeCourseID INT', @DummyCollegeCourseID;
+    IF EXISTS (
+        SELECT 1 FROM dbo.StudentApplications sa WHERE NOT EXISTS (
+            SELECT 1 FROM dbo.Applications a WHERE a.StudentID = sa.StudentID
+        )
+    )
+    BEGIN
+        DECLARE @DummyCollegeCourseID INT;
+        SELECT TOP 1 @DummyCollegeCourseID = CollegeCourseID FROM dbo.CollegeCourses;
+
+        IF @DummyCollegeCourseID IS NULL
+        BEGIN
+            DECLARE @DummyCourseID INT, @DummyBranchID INT, @DummyCollegeID INT;
+            
+            SELECT TOP 1 @DummyCourseID = CourseID FROM dbo.Courses;
+            IF @DummyCourseID IS NULL
+            BEGIN
+                INSERT INTO dbo.Courses (CourseName, CourseCode) VALUES (''General Course'', ''GEN'');
+                SET @DummyCourseID = SCOPE_IDENTITY();
+            END
+            
+            SELECT TOP 1 @DummyBranchID = BranchID FROM dbo.Branches;
+            IF @DummyBranchID IS NULL
+            BEGIN
+                INSERT INTO dbo.Branches (CourseID, BranchName, BranchCode) VALUES (@DummyCourseID, ''General Branch'', ''GEN'');
+                SET @DummyBranchID = SCOPE_IDENTITY();
+            END
+            
+            SELECT TOP 1 @DummyCollegeID = CollegeID FROM dbo.Colleges;
+            IF @DummyCollegeID IS NULL
+            BEGIN
+                DECLARE @DefaultUserID INT;
+                SELECT TOP 1 @DefaultUserID = UserID FROM dbo.Users;
+                INSERT INTO dbo.Colleges (CollegeName, Email, UserID, Status) 
+                VALUES (''Default College'', ''college@default.com'', @DefaultUserID, ''approved'');
+                SET @DummyCollegeID = SCOPE_IDENTITY();
+            END
+            
+            INSERT INTO dbo.CollegeCourses (CollegeID, CourseID, BranchID, DurationYears, TotalSeats, AnnualFee)
+            VALUES (@DummyCollegeID, @DummyCourseID, @DummyBranchID, 4.0, 60, 50000.00);
+            SET @DummyCollegeCourseID = SCOPE_IDENTITY();
+        END
+
+        INSERT INTO dbo.Applications (StudentID, CollegeCourseID, CurrentStatus, CreatedAt, UpdatedAt)
+        SELECT 
+            StudentID,
+            @DummyCollegeCourseID,
+            Status,
+            CreatedAt,
+            CreatedAt
+        FROM dbo.StudentApplications sa
+        WHERE NOT EXISTS (SELECT 1 FROM dbo.Applications a WHERE a.StudentID = sa.StudentID);
+    END
+    ';
 END
 GO
 
@@ -515,6 +515,44 @@ END
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_AppStatusHistory_ApplicationID' AND object_id = OBJECT_ID('dbo.ApplicationStatusHistory'))
 BEGIN
     CREATE NONCLUSTERED INDEX IX_AppStatusHistory_ApplicationID ON dbo.ApplicationStatusHistory(ApplicationID) INCLUDE (Status, CreatedAt);
+END
+GO
+
+
+-------------------------------------------------------------------------------
+-- 12. ADD ProfileCompletionPercentage TO COLLEGEPROFILES & ACTIVATE COLLEGES
+-------------------------------------------------------------------------------
+PRINT 'Updating CollegeProfiles and Users tables for college activations...';
+
+IF NOT EXISTS (
+    SELECT 1 
+    FROM sys.columns 
+    WHERE object_id = OBJECT_ID('dbo.CollegeProfiles') 
+      AND name = 'ProfileCompletionPercentage'
+)
+BEGIN
+    ALTER TABLE dbo.CollegeProfiles
+    ADD ProfileCompletionPercentage DECIMAL(5,2) NOT NULL
+        CONSTRAINT DF_CollegeProfiles_Completion DEFAULT 0;
+    PRINT 'Added ProfileCompletionPercentage column to dbo.CollegeProfiles';
+END
+GO
+
+UPDATE u
+SET u.IsActive = 1
+FROM dbo.Users u
+INNER JOIN dbo.Roles r ON u.RoleID = r.RoleID
+WHERE r.RoleName = 'college'
+  AND u.IsActive = 0;
+PRINT 'Activated all pending college user accounts in Users table';
+GO
+
+IF COL_LENGTH('dbo.Colleges', 'Status') IS NOT NULL
+BEGIN
+    UPDATE dbo.Colleges
+    SET Status = 'approved'
+    WHERE Status IS NULL;
+    PRINT 'Ensured existing colleges have status set to approved';
 END
 GO
 

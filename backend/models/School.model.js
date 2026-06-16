@@ -107,16 +107,18 @@ const SchoolModel = {
   async create(data) {
     const pool = await getPool();
     const uId = typeof data.adminId === 'number' ? data.adminId : parseInt(String(data.adminId || ''), 10);
+    const status = data.status ?? 'pending';
 
     const ins = await pool
       .request()
       .input('school_name', sql.NVarChar(200), data.schoolName)
       .input('email', sql.NVarChar(255), data.email || null)
       .input('admin_id', sql.Int, Number.isFinite(uId) ? uId : null)
+      .input('status', sql.VarChar(20), status)
       .query(`
         INSERT INTO dbo.Colleges (CollegeName, Email, UserID, Status)
         OUTPUT inserted.CollegeID
-        VALUES (@school_name, @email, @admin_id, 'approved')
+        VALUES (@school_name, @email, @admin_id, @status)
       `);
     const colId = ins.recordset[0].CollegeID;
 

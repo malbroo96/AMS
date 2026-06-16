@@ -1,29 +1,23 @@
-const path = require('path');
-const fs = require('fs');
-const { upload: uploadConfig } = require('../config/env');
-const { isCloudinaryEnabled, uploadToCloudinary } = require('../config/cloudinary');
+const sharepointService = require('./sharepoint.service');
+const ApiError = require('../utils/ApiError');
 
-/**
- * Handles file upload to Cloudinary (if enabled) or local disk.
- */
+/** Handles file upload to SharePoint under AMS/{subfolder}/. */
 async function processUpload(file, subfolder = 'general') {
   if (!file) {
     throw new Error('No file provided');
   }
 
-  if (isCloudinaryEnabled) {
-    const buffer = fs.readFileSync(file.path);
-    const result = await uploadToCloudinary(buffer, subfolder, 'auto');
-    fs.unlinkSync(file.path);
-    return {
-      url: result.secure_url,
-      publicId: result.public_id,
-      storage: 'cloudinary',
-    };
+  const buffer = file.buffer;
+  if (!buffer) {
+    throw new ApiError('File buffer missing — ensure multer memoryStorage is used', 500);
   }
 
-  const url = `/${uploadConfig.dir}/${file.filename}`;
-  return { url, publicId: null, storage: 'local' };
+  return sharepointService.uploadFile({
+    buffer,
+    originalName: file.originalname,
+    mimeType: file.mimetype,
+    subfolder,
+  });
 }
 
 module.exports = { processUpload };
