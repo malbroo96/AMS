@@ -4,18 +4,27 @@ require('isomorphic-fetch');
 const { ConfidentialClientApplication } = require('@azure/msal-node');
 const { Client } = require('@microsoft/microsoft-graph-client');
 
-const required = ['TENANT_ID', 'CLIENT_ID', 'CLIENT_SECRET'];
-
 function fail(message) {
   console.error(message);
   process.exit(1);
 }
 
+function env(name, legacy) {
+  return process.env[name] || (legacy ? process.env[legacy] : undefined);
+}
+
 function requireEnv() {
-  const missing = required.filter((name) => !process.env[name]);
+  const tenantId = env('SHAREPOINT_TENANT_ID', 'TENANT_ID');
+  const clientId = env('SHAREPOINT_CLIENT_ID', 'CLIENT_ID');
+  const clientSecret = env('SHAREPOINT_CLIENT_SECRET', 'CLIENT_SECRET');
+  const missing = [];
+  if (!tenantId) missing.push('SHAREPOINT_TENANT_ID (or TENANT_ID)');
+  if (!clientId) missing.push('SHAREPOINT_CLIENT_ID (or CLIENT_ID)');
+  if (!clientSecret) missing.push('SHAREPOINT_CLIENT_SECRET (or CLIENT_SECRET)');
   if (missing.length) {
     fail(`Missing required env values: ${missing.join(', ')}`);
   }
+  return { tenantId, clientId, clientSecret };
 }
 
 function argValue(name) {
@@ -35,11 +44,12 @@ function parseSharePointUrl(rawUrl) {
 }
 
 async function graphClient() {
+  const { tenantId, clientId, clientSecret } = requireEnv();
   const msalClient = new ConfidentialClientApplication({
     auth: {
-      authority: `https://login.microsoftonline.com/${process.env.TENANT_ID}`,
-      clientId: process.env.CLIENT_ID,
-      clientSecret: process.env.CLIENT_SECRET,
+      authority: `https://login.microsoftonline.com/${tenantId}`,
+      clientId,
+      clientSecret,
     },
   });
 

@@ -53,7 +53,7 @@ const collegeAssetService = {
 
     if (currentUrl) {
       try {
-        await sharepointService.deleteFile(currentUrl);
+        await sharepointService.deleteCollegeAsset({ collegeId, assetType, currentUrl });
       } catch (err) {
         console.error('SharePoint file deletion failed:', err.message);
       }

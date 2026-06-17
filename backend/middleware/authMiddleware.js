@@ -20,9 +20,8 @@ const authMiddleware = async (req, res, next) => {
       throw new ApiError('User not found', 401);
     }
 
-    // College admins must be approved (isActive) before accessing protected routes
-    if (user.role === 'college' && !user.isActive) {
-      throw new ApiError('Your account is pending super admin approval', 403);
+    if (!user.isActive) {
+      throw new ApiError('Your account has been deactivated', 403);
     }
 
     const { passwordHash, ...rest } = user;

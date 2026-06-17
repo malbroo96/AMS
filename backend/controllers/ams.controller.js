@@ -18,7 +18,9 @@ exports.collegeDashboard = asyncHandler(async (req, res) => {
 });
 
 exports.collegeProfile = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await amsService.getCollegeProfile(req.user) });
+  const profile = await amsService.getCollegeProfile(req.user);
+  console.log('[DEBUG] [College Profile API Payload]:', JSON.stringify(profile, null, 2));
+  res.json({ success: true, data: profile });
 });
 
 exports.updateCollegeProfile = asyncHandler(async (req, res) => {

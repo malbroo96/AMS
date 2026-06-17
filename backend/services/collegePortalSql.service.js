@@ -85,6 +85,7 @@ function mapGallery(row) {
 function baseProfile(row) {
   const profile = {
     id: String(row.CollegeID),
+    collegeId: String(row.CollegeID),
     collegeName: row.CollegeName || '',
     shortName: row.ShortName || '',
     establishmentYear: row.EstablishmentYear != null ? Number(row.EstablishmentYear) : null,
@@ -96,6 +97,7 @@ function baseProfile(row) {
     email: row.Email || '',
     status: row.Status || '',
     logoUrl: row.LogoUrl || null,
+    bannerUrl: row.BannerUrl || null,
     coverBannerUrl: row.BannerUrl || null,
     prospectusUrl: row.ProspectusUrl || null,
     location: {
@@ -162,8 +164,11 @@ async function getProfileRow(collegeId) {
   return row;
 }
 
-async function getProfile(collegeId) {
+async function getProfile(collegeId, enforceApproved = false) {
   const row = await getProfileRow(collegeId);
+  if (enforceApproved && row.Status !== 'approved') {
+    throw new ApiError('College profile not found or not approved', 404);
+  }
   const pool = await getPool();
   const [courses, gallery] = await Promise.all([
     pool.request().input('collegeId', sql.Int, collegeId).query(`
@@ -281,7 +286,7 @@ const collegePortalSqlService = {
 
   async getOwnProfile(user) {
     const collegeId = await ownCollegeId(user);
-    return getProfile(collegeId);
+    return getProfile(collegeId, false);
   },
 
   updateProfile,
@@ -413,7 +418,7 @@ const collegePortalSqlService = {
 
   async getPublicDetails(collegeIdRaw) {
     const collegeId = asId(collegeIdRaw);
-    return getProfile(collegeId);
+    return getProfile(collegeId, true);
   },
 
   async saveCourse(user, courseIdRaw, data) {

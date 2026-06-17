@@ -79,7 +79,8 @@ const adminService = {
       phone,
       passwordHash: hashed,
       role: 'college',
-      isActive: false,
+      isActive: true,
+      profileCompletionPercentage: 0
     });
 
     if (schoolId) {
@@ -92,11 +93,21 @@ const adminService = {
   },
 
   async approveSchoolAdmin(adminId) {
+    const { sql, getPool } = require('../config/database');
     const user = await UserModel.findById(adminId);
     if (!user || user.role !== 'college') {
       throw new ApiError('School admin not found', 404);
     }
-    await UserModel.update(adminId, { isActive: true });
+    
+    const pool = await getPool();
+    await pool.request()
+      .input('adminId', sql.Int, user.id)
+      .query(`
+        UPDATE dbo.Colleges
+        SET Status = 'approved'
+        WHERE UserID = @adminId
+      `);
+
     const updated = await UserModel.findById(adminId);
     return mapUser(updated);
   },

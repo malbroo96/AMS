@@ -85,6 +85,7 @@ CREATE TABLE dbo.CollegeProfiles (
     PlacementPercentage DECIMAL(5,2) NULL,
     HighestPackage NVARCHAR(50) NULL,
     AveragePackage NVARCHAR(50) NULL,
+    ProfileCompletionPercentage DECIMAL(5,2) NOT NULL CONSTRAINT DF_CollegeProfiles_Completion DEFAULT 0,
     CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_CollegeProfiles_CreatedAt DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NOT NULL CONSTRAINT DF_CollegeProfiles_UpdatedAt DEFAULT SYSUTCDATETIME(),
     CONSTRAINT PK_CollegeProfiles PRIMARY KEY CLUSTERED (CollegeID),
