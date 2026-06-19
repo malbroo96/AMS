@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Admin Dashboard | E-Admit Portal</title>
+    <!-- Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Mobile Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+            <div class="brand">
+                <div class="brand-logo"><i class="ph ph-student"></i></div>
+                <div class="brand-text">
+                    <h2>E-ADMIT PORTAL</h2>
+                    <p>College Portal</p>
+                </div>
+                <button class="close-sidebar-btn" id="closeSidebarBtn" aria-label="Close menu">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item">
+                    <i class="ph ph-squares-four"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item active">
+                    <i class="ph ph-buildings"></i>
+                    <span>College Profile</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="ph ph-users"></i>
+                    <span>Interested Students</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="ph ph-file-text"></i>
+                    <span>Applications</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="ph ph-books"></i>
+                    <span>Courses</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="ph ph-megaphone"></i>
+                    <span>Notices</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="ph ph-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="ph ph-gear"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="sidebar-bottom">
+            <div class="admin-profile">
+                <img src="https://ui-avatars.com/api/?name=Admin+User&background=5B5FEF&color=fff" alt="Admin Profile" class="avatar">
+                <div class="admin-info">
+                    <p class="admin-name">Admin Name</p>
+                </div>
+            </div>
+            <button class="logout-btn">
+                <i class="ph ph-sign-out"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <header class="top-navbar">
+            <div class="nav-left">
+                <button class="menu-toggle" id="menuToggleBtn" aria-label="Open menu">
+                    <i class="ph ph-list"></i>
+                </button>
+                <h1 class="page-title">College Profile</h1>
+            </div>
+            
+            <div class="nav-center">
+                <div class="search-bar">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" placeholder="Search...">
+                </div>
+            </div>
+
+            <div class="nav-right">
+                <button class="icon-btn" aria-label="Notifications">
+                    <i class="ph ph-bell"></i>
+                    <span class="badge">3</span>
+                </button>
+                <button class="icon-btn" aria-label="Messages">
+                    <i class="ph ph-chat-circle-dots"></i>
+                </button>
+                <div class="profile-dropdown">
+                    <img src="https://ui-avatars.com/api/?name=Admin+User&background=5B5FEF&color=fff" alt="Admin" class="nav-avatar">
+                    <i class="ph ph-caret-down"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard-content">
+            <div class="content-left">
+                <!-- Main Profile Header -->
+                <section class="profile-header card">
+                    <div class="cover-banner"></div>
+                    <div class="profile-details">
+                        <div class="logo-wrapper">
+                            <div class="college-logo">SBC</div>
+                        </div>
+                        <div class="profile-info">
+                            <div class="info-top">
+                                <h2>ST BERCHMANS COLLEGE</h2>
+                                <span class="status-badge pending">Pending Verification</span>
+                            </div>
+                            <p class="location"><i class="ph ph-map-pin"></i> Kerala, India</p>
+                            
+                            <div class="profile-completion">
+                                <div class="completion-header">
+                                    <span>Profile Completion</span>
+                                    <span>68%</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar" style="width: 68%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary edit-profile-btn">Edit Profile</button>
+                    </div>
+                </section>
+
+                <!-- Statistics Cards -->
+                <section class="statistics-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon applications"><i class="ph ph-file-text"></i></div>
+                        <div class="stat-content">
+                            <h3 class="stat-number">1,248</h3>
+                            <p class="stat-subtitle">Applications</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon students"><i class="ph ph-users"></i></div>
+                        <div class="stat-content">
+                            <h3 class="stat-number">3,892</h3>
+                            <p class="stat-subtitle">Interested Students</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon courses"><i class="ph ph-books"></i></div>
+                        <div class="stat-content">
+                            <h3 class="stat-number">24</h3>
+                            <p class="stat-subtitle">Courses Offered</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon completion"><i class="ph ph-check-circle"></i></div>
+                        <div class="stat-content">
+                            <h3 class="stat-number">68%</h3>
+                            <p class="stat-subtitle">Profile Completion</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Recent Applications Table -->
+                <section class="applications-section card">
+                    <div class="section-header">
+                        <h3>Recent Applications</h3>
+                        <button class="btn btn-secondary btn-sm">View All</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Course</th>
+                                    <th>Applied Date</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="user-cell">
+                                            <img src="https://ui-avatars.com/api/?name=Arjun+K&background=random" alt="" class="table-avatar">
+                                            <span>Arjun K</span>
+                                        </div>
+                                    </td>
+                                    <td>B.Sc Computer Science</td>
+                                    <td>18 Jun 2026</td>
+                                    <td><span class="chip chip-approved">Approved</span></td>
+                                    <td><button class="action-btn"><i class="ph ph-dots-three"></i></button></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="user-cell">
+                                            <img src="https://ui-avatars.com/api/?name=Meera+S&background=random" alt="" class="table-avatar">
+                                            <span>Meera S</span>
+                                        </div>
+                                    </td>
+                                    <td>B.A English</td>
+                                    <td>17 Jun 2026</td>
+                                    <td><span class="chip chip-pending">Pending</span></td>
+                                    <td><button class="action-btn"><i class="ph ph-dots-three"></i></button></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="user-cell">
+                                            <img src="https://ui-avatars.com/api/?name=Rahul+T&background=random" alt="" class="table-avatar">
+                                            <span>Rahul T</span>
+                                        </div>
+                                    </td>
+                                    <td>B.Com Finance</td>
+                                    <td>16 Jun 2026</td>
+                                    <td><span class="chip chip-rejected">Rejected</span></td>
+                                    <td><button class="action-btn"><i class="ph ph-dots-three"></i></button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination">
+                        <button class="page-btn disabled"><i class="ph ph-caret-left"></i></button>
+                        <button class="page-btn active">1</button>
+                        <button class="page-btn">2</button>
+                        <button class="page-btn">3</button>
+                        <button class="page-btn"><i class="ph ph-caret-right"></i></button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Side Panel -->
+            <aside class="content-right">
+                <!-- Quick Actions -->
+                <div class="card quick-actions">
+                    <h3>Quick Actions</h3>
+                    <div class="action-list">
+                        <button class="action-item">
+                            <div class="action-icon edit"><i class="ph ph-pencil-simple"></i></div>
+                            <span>Edit Profile</span>
+                        </button>
+                        <button class="action-item">
+                            <div class="action-icon add"><i class="ph ph-plus"></i></div>
+                            <span>Add Course</span>
+                        </button>
+                        <button class="action-item">
+                            <div class="action-icon notice"><i class="ph ph-megaphone"></i></div>
+                            <span>Publish Notice</span>
+                        </button>
+                        <button class="action-item">
+                            <div class="action-icon users"><i class="ph ph-users"></i></div>
+                            <span>View Students</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Notifications -->
+                <div class="card notifications-card">
+                    <h3>Notifications</h3>
+                    <div class="notification-list">
+                        <div class="notification-item">
+                            <div class="notif-icon pending"><i class="ph ph-file-text"></i></div>
+                            <div class="notif-content">
+                                <p><strong>3 Pending Applications</strong></p>
+                                <span>Just now</span>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notif-icon alert"><i class="ph ph-warning-circle"></i></div>
+                            <div class="notif-content">
+                                <p><strong>2 Profile Updates Required</strong></p>
+                                <span>2 hours ago</span>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notif-icon success"><i class="ph ph-user-plus"></i></div>
+                            <div class="notif-content">
+                                <p><strong>New Student Registered</strong></p>
+                                <span>5 hours ago</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Timeline -->
+                <div class="card activity-timeline">
+                    <h3>Activity Timeline</h3>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <p>Updated Admission Criteria</p>
+                                <span>Yesterday, 10:00 AM</span>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <p>Published Merit List v1</p>
+                                <span>15 Jun 2026, 04:30 PM</span>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <p>System Maintenance</p>
+                                <span>12 Jun 2026, 02:00 AM</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <footer class="footer">
+            <p>&copy; 2026 E-Admit Portal.</p>
+            <div class="footer-links">
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms</a>
+                <a href="#">Support</a>
+            </div>
+        </footer>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

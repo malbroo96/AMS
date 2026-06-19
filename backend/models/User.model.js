@@ -9,8 +9,8 @@ const toIntId = (raw) => {
 async function roleIdFor(pool, roleName) {
   const r = await pool
     .request()
-    .input('roleName', sql.VarChar(50), roleName)
-    .query('SELECT RoleID FROM Roles WHERE RoleName = @roleName');
+    .input('roleName', sql.NVarChar(50), roleName.trim().toLowerCase())
+    .query('SELECT RoleID FROM Roles WHERE LOWER(RoleName) = @roleName');
   const row = r.recordset[0];
   if (!row) throw new Error(`Role not found in Roles: ${roleName}`);
   return row.RoleID;

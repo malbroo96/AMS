@@ -132,8 +132,8 @@ const SchoolModel = {
       .input('logo_url', sql.NVarChar(2048), data.logoUrl || null)
       .input('board', sql.NVarChar(100), data.board || null)
       .query(`
-        INSERT INTO dbo.CollegeProfiles (CollegeID, Address, City, ContactPhone, SummaryDescription, LogoUrl, NaacGrade, ProfileCompletionPercentage)
-        VALUES (@collegeId, @address, @city, @phone, @description, @logo_url, @board, 100)
+        INSERT INTO dbo.CollegeProfiles (CollegeID, Address, City, ContactPhone, SummaryDescription, LogoUrl, NaacGrade)
+        VALUES (@collegeId, @address, @city, @phone, @description, @logo_url, @board)
       `);
 
     return this.findById(colId);

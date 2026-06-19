@@ -46,15 +46,18 @@ async function getPool() {
 
   try {
     console.log('Attempting MSSQL connection to:', dbConfig.server);
+    // Align race timeout with the config timeout plus a small buffer
+    const raceTimeoutMs = (dbConfig.connectionTimeout || 15000) + 2000;
+
     pool = await Promise.race([
       sql.connect(dbConfig),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), 10000)
+        setTimeout(() => reject(new Error(`Database connection timeout after ${raceTimeoutMs / 1000} seconds`)), raceTimeoutMs)
       )
     ]);
 
     pool.on('error', (err) => {
-      console.error('MSSQL pool error:', err.message);
+      console.error('MSSQL pool error:', err);
     });
 
     console.log('Successfully connected to MSSQL database');

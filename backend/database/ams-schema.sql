@@ -10,7 +10,7 @@ IF OBJECT_ID('dbo.Roles', 'U') IS NULL
 BEGIN
   CREATE TABLE dbo.Roles (
     RoleID INT IDENTITY(1,1) PRIMARY KEY,
-    RoleName VARCHAR(50) NOT NULL UNIQUE
+    RoleName NVARCHAR(50) NOT NULL UNIQUE
   );
   INSERT INTO dbo.Roles (RoleName) VALUES ('admin'), ('college'), ('student');
 END

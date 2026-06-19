@@ -27,7 +27,7 @@ const collegeAssetService = {
     // Ensure CollegeProfile row exists
     const exists = await pool.request().input('cid', sql.Int, collegeId).query('SELECT 1 FROM dbo.CollegeProfiles WHERE CollegeID = @cid');
     if (!exists.recordset[0]) {
-      await pool.request().input('cid', sql.Int, collegeId).query('INSERT INTO dbo.CollegeProfiles (CollegeID, ProfileCompletionPercentage) VALUES (@cid, 0)');
+      await pool.request().input('cid', sql.Int, collegeId).query('INSERT INTO dbo.CollegeProfiles (CollegeID) VALUES (@cid)');
     }
 
     const column = assetType === 'logo' ? 'LogoUrl' : 'BannerUrl';

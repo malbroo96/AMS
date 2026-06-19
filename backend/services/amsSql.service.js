@@ -77,9 +77,9 @@ function buildCollegeProfilePayload(college, stats = {}) {
 async function getRoleId(pool, roleName) {
   const r = await pool
     .request()
-    .input('roleName', sql.VarChar(50), roleName)
-    .query('SELECT RoleID FROM Roles WHERE RoleName = @roleName');
-  if (!r.recordset[0]) throw new ApiError(`Missing role in AMS.Roles: ${roleName}`, 500);
+    .input('roleName', sql.NVarChar(50), roleName.trim().toLowerCase())
+    .query('SELECT RoleID FROM Roles WHERE LOWER(RoleName) = @roleName');
+  if (!r.recordset[0]) throw new ApiError(`Role not found in Roles: ${roleName}`, 500);
   return r.recordset[0].RoleID;
 }
 
@@ -934,11 +934,10 @@ const amsSqlService = {
 
       await new sql.Request(transaction)
         .input('collegeId', sql.Int, crow.CollegeID)
-        .input('contactEmail', sql.NVarChar(255), email)
-        .input('completion', sql.Decimal(5, 2), 15)
+        .input('collegeName', sql.NVarChar(100), data.collegeName)
         .query(`
-          INSERT INTO dbo.CollegeProfiles (CollegeID, ShortName, ProfileCompletionPercentage)
-          VALUES (@collegeId, @collegeName, @completion)
+          INSERT INTO dbo.CollegeProfiles (CollegeID, ShortName)
+          VALUES (@collegeId, @collegeName)
         `);
 
       await transaction.commit();

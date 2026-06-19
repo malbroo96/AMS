@@ -7,6 +7,39 @@ const { signToken } = require('../utils/jwt');
 
 const SALT_ROUNDS = 12;
 
+async function removePartialRegistration(userId) {
+  const { sql, getPool } = require('../config/database');
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
+  try {
+    const studentResult = await new sql.Request(transaction)
+      .input('userId', sql.Int, userId)
+      .query('SELECT StudentID FROM dbo.Students WHERE UserID = @userId');
+    const studentId = studentResult.recordset[0]?.StudentID;
+    if (studentId) {
+      await new sql.Request(transaction).input('studentId', sql.Int, studentId)
+        .query('DELETE FROM dbo.StudentAcademicDetails WHERE StudentID = @studentId; DELETE FROM dbo.StudentProfiles WHERE StudentID = @studentId; DELETE FROM dbo.Students WHERE StudentID = @studentId;');
+    }
+
+    const collegeResult = await new sql.Request(transaction)
+      .input('userId', sql.Int, userId)
+      .query('SELECT CollegeID FROM dbo.Colleges WHERE UserID = @userId');
+    const collegeId = collegeResult.recordset[0]?.CollegeID;
+    if (collegeId) {
+      await new sql.Request(transaction).input('collegeId', sql.Int, collegeId)
+        .query('DELETE FROM dbo.CollegeProfiles WHERE CollegeID = @collegeId; DELETE FROM dbo.Colleges WHERE CollegeID = @collegeId;');
+    }
+
+    await new sql.Request(transaction).input('userId', sql.Int, userId)
+      .query('DELETE FROM dbo.Users WHERE UserID = @userId');
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}
+
 const sanitize = (user) => {
   if (!user) return null;
   const { passwordHash, ...rest } = user;
@@ -30,35 +63,47 @@ const authService = {
     const hashed = await bcrypt.hash(password, SALT_ROUNDS);
     const isActive = true;
 
-    const user = await UserModel.create({
-      name,
-      email: normalizedEmail,
-      phone,
-      passwordHash: hashed,
-      role: requestedRole,
-      isActive,
-    });
-
-    if (requestedRole === 'student') {
-      await StudentModel.create(user.id);
-      await StudentModel.update(user.id, {
-        dob: payload.dateOfBirth || payload.dob || null,
-        gender: payload.gender || null,
-        parentName: payload.parentName || payload.parent_name || null,
-        address: payload.address || null,
-        grade: payload.education || payload.educationDetails || null,
-      });
-      user.student = await StudentModel.findByUserId(user.id);
-    }
-
-    if (requestedRole === 'college') {
-      const collegeName = payload.collegeName || name;
-      user.college = await SchoolModel.create({
-        schoolName: collegeName,
+    let user;
+    try {
+      user = await UserModel.create({
+        name,
         email: normalizedEmail,
-        adminId: user.id,
-        status: 'pending'
+        phone,
+        passwordHash: hashed,
+        role: requestedRole,
+        isActive,
       });
+
+      if (requestedRole === 'student') {
+        await StudentModel.create(user.id);
+        await StudentModel.update(user.id, {
+          dob: payload.dateOfBirth || payload.dob || null,
+          gender: payload.gender || null,
+          parentName: payload.parentName || payload.parent_name || null,
+          address: payload.address || null,
+          grade: payload.education || payload.educationDetails || null,
+        });
+        user.student = await StudentModel.findByUserId(user.id);
+      }
+
+      if (requestedRole === 'college') {
+        const collegeName = payload.collegeName || name;
+        user.college = await SchoolModel.create({
+          schoolName: collegeName,
+          email: normalizedEmail,
+          adminId: user.id,
+          status: 'pending'
+        });
+      }
+    } catch (error) {
+      if (user?.id) {
+        try {
+          await removePartialRegistration(user.id);
+        } catch (cleanupError) {
+          console.error('Failed to clean up partial registration:', cleanupError);
+        }
+      }
+      throw error;
     }
 
     const token = signToken({ id: user.id, role: user.role });
