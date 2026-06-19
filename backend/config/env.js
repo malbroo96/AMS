@@ -84,8 +84,8 @@ module.exports = {
     tenantId: process.env.SHAREPOINT_TENANT_ID || process.env.TENANT_ID,
     clientId: process.env.SHAREPOINT_CLIENT_ID || process.env.CLIENT_ID,
     clientSecret: process.env.SHAREPOINT_CLIENT_SECRET || process.env.CLIENT_SECRET,
-    siteId: process.env.SHAREPOINT_SITE_ID,
-    driveId: process.env.SHAREPOINT_DRIVE_ID,
+    siteId: process.env.SHAREPOINT_SITE_ID || process.env.SITE_ID,
+    driveId: process.env.SHAREPOINT_DRIVE_ID || process.env.DRIVE_ID,
     folder: process.env.SHAREPOINT_FOLDER || process.env.SHAREPOINT_ROOT_FOLDER || 'CollegeAssets',
   },
 

@@ -1,5 +1,5 @@
 import { forwardRef, type RefObject } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { LogoMark } from '../LogoMark';
 import type { UserRole } from '../../types';
 import './Sidebar.css';
@@ -19,6 +19,11 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { to: '/dashboard/college', label: 'Dashboard' },
     { to: '/dashboard/college/profile', label: 'College Profile' },
     { to: '/dashboard/college?view=students', label: 'Interested Students' },
+    { to: '/dashboard/college/applications', label: 'Applications' },
+    { to: '/dashboard/college/courses', label: 'Courses' },
+    { to: '/dashboard/college/notices', label: 'Notices' },
+    { to: '/dashboard/college/reports', label: 'Reports' },
+    { to: '/dashboard/college/settings', label: 'Settings' },
   ],
   admin: [
     { to: '/dashboard/admin', label: 'Dashboard' },
@@ -45,6 +50,7 @@ interface SidebarProps {
 export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
   function Sidebar({ role, open, menuButtonRef, onMenuToggle, onClose }, ref) {
     const items = navByRole[role];
+    const location = useLocation();
 
     return (
       <>
@@ -86,19 +92,34 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
             </button>
           </div>
           <nav className="sidebar__nav">
-            {items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to.endsWith('/student') || item.to.endsWith('/college') || item.to.endsWith('/admin')}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `sidebar__link${isActive ? ' sidebar__link--active' : ''}`
+            {items.map((item) => {
+              const [itemPath, itemQuery] = item.to.split('?');
+              let isActive = false;
+              
+              if (itemQuery) {
+                // For links with query params (e.g. ?view=students), match path and query exactly
+                isActive = location.pathname === itemPath && location.search === `?${itemQuery}`;
+              } else {
+                // For root dashboard links, match exactly without any query params
+                if (item.to.endsWith('/student') || item.to.endsWith('/college') || item.to.endsWith('/admin')) {
+                  isActive = location.pathname === item.to && !location.search;
+                } else {
+                  // For other subpaths (e.g. /profile, /applications), match prefix
+                  isActive = location.pathname.startsWith(item.to);
                 }
-              >
-                {item.label}
-              </NavLink>
-            ))}
+              }
+
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={onClose}
+                  className={`sidebar__link${isActive ? ' sidebar__link--active' : ''}`}
+                >
+                  {item.label}
+                </NavLink>
+              );
+            })}
           </nav>
         </aside>
       </>

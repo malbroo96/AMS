@@ -52,8 +52,10 @@
   font-weight: 500;
   color: var(--sidebar-text-muted);
   text-decoration: none;
+  border-left: 3px solid transparent;
   transition:
     background-color var(--sidebar-transition),
+    border-color var(--sidebar-transition),
     color var(--sidebar-transition),
     transform var(--sidebar-transition);
 }
@@ -67,6 +69,7 @@
   background-color: var(--sidebar-active);
   color: var(--sidebar-text);
   font-weight: 600;
+  border-left-color: #3b82f6;
 }
 
 .sidebar__link--active:hover {

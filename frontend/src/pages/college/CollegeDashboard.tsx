@@ -11,7 +11,7 @@ import {
   type CollegeAssets,
 } from '../../api/ams';
 import { updateApplicationStatus } from '../../api/applications';
-import { button, shell, table } from '../../components/ui/designTokens';
+import { button, form, shell, table } from '../../components/ui/designTokens';
 import { useToast } from '../../context/ToastContext';
 import type { College } from '../../types';
 
@@ -159,186 +159,282 @@ export function CollegeDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="rounded-lg bg-green-700 p-6 text-white shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-green-100">College Portal</p>
-              <h1 className="mt-1 text-2xl font-bold">Interested Students</h1>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate('/dashboard/college/profile')}
-              className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-green-700 shadow-md transition hover:bg-green-50"
-            >
-              Manage College Profile
-            </button>
-          </div>
-        </div>
+      <div className="grid gap-6 xl:grid-cols-3">
+        
+        {/* Left Column (Content) */}
+        <div className="space-y-6 xl:col-span-2">
+          
+          {/* Main Profile Header */}
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+            {/* Banner */}
+            <div 
+              className="h-32 bg-slate-200 sm:h-40" 
+              style={{
+                backgroundImage: assets?.bannerUrl ? `url(${assets.bannerUrl})` : 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            ></div>
+            
+            {/* Details */}
+            <div className="relative px-6 pb-6 pt-16 sm:px-8 sm:pb-8 sm:pt-20">
+              {/* Logo Wrapper */}
+              <div className="absolute -top-12 left-6 h-24 w-24 overflow-hidden rounded-full border-4 border-white bg-white shadow-sm sm:-top-16 sm:left-8 sm:h-32 sm:w-32">
+                {assets?.logoUrl ? (
+                  <img src={assets.logoUrl} alt="College Logo" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-slate-100 text-2xl font-bold text-slate-400 sm:text-4xl">
+                    {data.college?.collegeName?.[0]?.toUpperCase() || 'C'}
+                  </div>
+                )}
+              </div>
 
-        <section className="rounded-lg border border-green-100 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-bold text-slate-900">College Details</h2>
-            <button
-              type="button"
-              onClick={() => setEditMode((current) => !current)}
-              className="rounded-md border border-green-200 px-4 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-50"
-            >
-              {editMode ? 'Cancel' : 'Edit Profile'}
-            </button>
-          </div>
-          <div className="mt-3 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
-            {editMode ? (
-              <>
-                <label className="block">
-                  <span className="font-semibold">College</span>
-                  <input
-                    value={profileForm.collegeName}
-                    onChange={(event) => setProfileForm({ ...profileForm, collegeName: event.target.value })}
-                    className={inputClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className="font-semibold">Email</span>
-                  <input
-                    type="email"
-                    value={profileForm.email}
-                    onChange={(event) => setProfileForm({ ...profileForm, email: event.target.value })}
-                    className={inputClass}
-                  />
-                </label>
-              </>
-            ) : (
-              <>
-                <p><span className="font-semibold">College:</span> {String(data.college?.collegeName || '-')}</p>
-                <p><span className="font-semibold">Email:</span> {String(data.college?.email || '-')}</p>
-              </>
-            )}
-            <p><span className="font-semibold">Status:</span> {String(data.college?.status || '-')}</p>
-          </div>
-          {editMode ? (
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                disabled={savingProfile}
-                className="rounded-md bg-green-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-800 disabled:opacity-60"
-              >
-                {savingProfile ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          ) : null}
-        </section>
+              {/* Info */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+                      {data.college?.collegeName || 'College Name'}
+                    </h1>
+                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                      {data.college?.status || 'Pending Verification'}
+                    </span>
+                  </div>
+                  <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-slate-500">
+                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.243-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    {data.college?.city || 'Location not set'}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-600">{data.college?.email}</p>
+                </div>
 
-        <section className={`p-5 ${shell.card}`}>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className={shell.eyebrow}>College assets</p>
-              <h2 className="mt-1 text-lg font-bold text-slate-900">College images</h2>
-            </div>
-            <p className="text-sm text-slate-500">PNG, JPEG, WebP. Max 5 MB.</p>
-          </div>
+                <div className="shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setEditMode((current) => !current)}
+                    className={button.secondary}
+                  >
+                    {editMode ? 'Cancel Edit' : 'Edit Profile'}
+                  </button>
+                </div>
+              </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            <AssetUploadCard
-              title="College Logo"
-              description="Displayed on college cards and admissions pages."
-              imageUrl={assets?.logoUrl}
-              buttonLabel={assets?.logoUrl ? 'Replace logo' : 'Upload logo'}
-              isUploading={uploading === 'logo'}
-              onUpload={(file) => handleUpload('logo', file)}
-              onDelete={assets?.logoUrl ? handleDeleteLogo : undefined}
+              {editMode && (
+                <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-5">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block">
+                      <span className={form.label}>College Name</span>
+                      <input
+                        value={profileForm.collegeName}
+                        onChange={(event) => setProfileForm({ ...profileForm, collegeName: event.target.value })}
+                        className={form.input}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className={form.label}>Email Address</span>
+                      <input
+                        type="email"
+                        value={profileForm.email}
+                        onChange={(event) => setProfileForm({ ...profileForm, email: event.target.value })}
+                        className={form.input}
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
+                      disabled={savingProfile}
+                      className={button.primary}
+                    >
+                      {savingProfile ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Statistics Grid */}
+          <section className="grid gap-4 sm:grid-cols-3">
+            <StatCard 
+              label="Interested Students" 
+              value={data.stats?.interestedStudents || 0} 
+              icon={<svg className="size-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>}
+              bgClass="bg-blue-50 text-blue-600"
             />
-            <AssetUploadCard
-              title="College Banner"
-              description="Used as the wide visual for college profile discovery."
-              imageUrl={assets?.bannerUrl}
-              buttonLabel={assets?.bannerUrl ? 'Replace banner' : 'Upload banner'}
-              isUploading={uploading === 'banner'}
-              onUpload={(file) => handleUpload('banner', file)}
+            <StatCard 
+              label="Visible Profiles" 
+              value={data.stats?.grantedProfiles || 0} 
+              icon={<svg className="size-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
+              bgClass="bg-emerald-50 text-emerald-600"
             />
-          </div>
+            <StatCard 
+              label="Hidden Profiles" 
+              value={data.stats?.hiddenProfiles || 0} 
+              icon={<svg className="size-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>}
+              bgClass="bg-slate-100 text-slate-600"
+            />
+          </section>
 
-          {assets?.updatedOn ? (
-            <p className="mt-4 text-xs text-slate-500">Last updated: {new Date(assets.updatedOn).toLocaleString()}</p>
-          ) : null}
-        </section>
+          {/* Applications Table */}
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex flex-col gap-4 border-b border-slate-100 p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Recent Applications</h2>
+                <p className="mt-1 text-sm text-slate-500">Manage student access requests</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full whitespace-nowrap text-left text-sm">
+                <thead className={table.head}>
+                  <tr>
+                    <th className="p-4">Student Name</th>
+                    <th className="p-4">Course</th>
+                    <th className="p-4">Applied Date</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(data.students || []).map((student: any) => {
+                    const statusLower = String(student.status || '').toLowerCase().trim();
+                    const isSubmitted = statusLower === 'submitted' || statusLower === 'interested';
+                    const isUnderReview = statusLower === 'under_review' || statusLower === 'under review';
+                    const isApproved = statusLower === 'approved';
+                    const isRejected = statusLower === 'rejected';
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Stat label="Interested Students" value={data.stats?.interestedStudents || 0} />
-          <Stat label="Visible Profiles" value={data.stats?.grantedProfiles || 0} />
-          <Stat label="Hidden Profiles" value={data.stats?.hiddenProfiles || 0} />
-        </div>
-        <section className={`p-5 ${shell.card}`}>
-          <h2 className="text-lg font-bold text-slate-900">Applications Received</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className={table.head}>
-                <tr>
-                  <th className="p-3">Student Name</th>
-                  <th className="p-3">Course</th>
-                  <th className="p-3">Branch</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Applied Date</th>
-                  <th className="p-3 text-right">Access Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(data.students || []).map((student: any) => {
-                  const statusLower = String(student.status || '').toLowerCase().trim();
-                  const isSubmitted = statusLower === 'submitted' || statusLower === 'interested';
-                  const isUnderReview = statusLower === 'under_review' || statusLower === 'under review';
-                  const isApproved = statusLower === 'approved';
-                  const isRejected = statusLower === 'rejected';
-
-                  return (
-                    <tr key={String(student.applicationId)} className={table.row}>
-                      <td className="p-3 font-semibold text-slate-900">{student.name || 'Hidden'}</td>
-                      <td className="p-3">{String(student.courseName || '-')}</td>
-                      <td className="p-3">{String(student.branchName || '-')}</td>
-                      <td className="p-3">
-                        <StatusBadge status={student.status} />
-                      </td>
-                      <td className="p-3 text-slate-500">{formatDate(student.appliedDate)}</td>
-                      <td className="p-3 text-right">
-                        {isSubmitted && (
-                          <button
-                            type="button"
-                            onClick={() => handleRequestAccess(student.applicationId)}
-                            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-sm"
-                          >
-                            Request Student Details Access
-                          </button>
-                        )}
-                        {isUnderReview && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 border border-amber-200">
-                            Awaiting Admin Approval
-                          </span>
-                        )}
-                        {isApproved && (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedStudent(student)}
-                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-blue-700 shadow-sm"
-                          >
-                            View Details
-                          </button>
-                        )}
-                        {isRejected && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800 border border-red-200">
-                            Access Rejected
-                          </span>
-                        )}
+                    return (
+                      <tr key={String(student.applicationId)} className={`${table.row} transition-colors hover:bg-slate-50`}>
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-100 font-bold text-slate-600">
+                              {student.name ? student.name[0].toUpperCase() : '?'}
+                            </div>
+                            <span className="font-semibold text-slate-900">{student.name || 'Hidden Profile'}</span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <p className="font-medium text-slate-900">{String(student.courseName || '-')}</p>
+                          <p className="text-xs text-slate-500">{String(student.branchName || '-')}</p>
+                        </td>
+                        <td className="p-4 text-slate-500">{formatDate(student.appliedDate)}</td>
+                        <td className="p-4">
+                          <StatusBadge status={student.status} />
+                        </td>
+                        <td className="p-4 text-right">
+                          {isSubmitted && (
+                            <button
+                              type="button"
+                              onClick={() => handleRequestAccess(student.applicationId)}
+                              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                            >
+                              Request Access
+                            </button>
+                          )}
+                          {isUnderReview && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                              Awaiting Approval
+                            </span>
+                          )}
+                          {isApproved && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStudent(student)}
+                              className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-blue-700"
+                            >
+                              View Details
+                            </button>
+                          )}
+                          {isRejected && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800">
+                              Rejected
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {(!data.students || data.students.length === 0) && (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-slate-500">
+                        No applications found.
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+        </div>
+
+        {/* Right Panel (Sticky Layout) */}
+        <div className="space-y-6 xl:col-span-1">
+          <div className="sticky top-6 space-y-6">
+            
+            {/* Quick Actions / Asset Management */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+              <h3 className="mb-4 font-bold text-slate-900">College Assets</h3>
+              <div className="space-y-5">
+                <AssetUploadCard
+                  title="College Logo"
+                  description="Used on your profile and listings."
+                  imageUrl={assets?.logoUrl}
+                  buttonLabel={assets?.logoUrl ? 'Replace Logo' : 'Upload Logo'}
+                  isUploading={uploading === 'logo'}
+                  onUpload={(file) => handleUpload('logo', file)}
+                  onDelete={assets?.logoUrl ? handleDeleteLogo : undefined}
+                />
+                <hr className="border-slate-100" />
+                <AssetUploadCard
+                  title="Cover Banner"
+                  description="A wide banner for your profile page."
+                  imageUrl={assets?.bannerUrl}
+                  buttonLabel={assets?.bannerUrl ? 'Replace Banner' : 'Upload Banner'}
+                  isUploading={uploading === 'banner'}
+                  onUpload={(file) => handleUpload('banner', file)}
+                />
+              </div>
+              {assets?.updatedOn && (
+                <p className="mt-5 text-center text-xs font-medium text-slate-400">
+                  Last updated: {new Date(assets.updatedOn).toLocaleString()}
+                </p>
+              )}
+            </div>
+
+            {/* Notifications Overview Mock */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+              <h3 className="mb-4 font-bold text-slate-900">Notifications</h3>
+              <div className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{data.stats?.interestedStudents || 0} Pending Applications</p>
+                    <p className="text-xs text-slate-500">Requires your review</p>
+                  </div>
+                </div>
+                {(!assets?.logoUrl || !assets?.bannerUrl) && (
+                  <div className="flex gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                      <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Profile Incomplete</p>
+                      <p className="text-xs text-slate-500">Please upload logo & banner</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
-        </section>
+        </div>
+
       </div>
 
+      {/* Selected Student Modal (Kept Existing Logic/Styling with minor tweaks) */}
       {selectedStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
           <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-slate-100 flex flex-col">
@@ -451,13 +547,16 @@ export function CollegeDashboard() {
   );
 }
 
-const inputClass = 'mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-green-600';
-
-function Stat({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value, icon, bgClass }: { label: string; value: number; icon: React.ReactNode; bgClass: string }) {
   return (
-    <div className={`p-5 ${shell.card}`}>
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-bold text-blue-700">{value}</p>
+    <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-md">
+      <div className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${bgClass}`}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-slate-900">{value}</p>
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+      </div>
     </div>
   );
 }
@@ -480,53 +579,39 @@ function AssetUploadCard({
   onDelete?: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <div className="flex gap-4">
-        <div className="flex h-24 w-28 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white">
-          {imageUrl ? (
-            <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
-          ) : (
-            <span className="px-3 text-center text-xs font-semibold text-slate-400">No image</span>
+    <div className="flex items-start gap-4">
+      <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-inner">
+        {imageUrl ? (
+          <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
+        ) : (
+          <span className="text-[10px] font-semibold text-slate-400">No image</span>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-bold text-slate-900">{title}</h4>
+        <p className="mt-0.5 text-xs text-slate-500 leading-snug">{description}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <label className="inline-flex cursor-pointer items-center text-xs font-semibold text-blue-600 hover:text-blue-800 transition">
+            {isUploading ? 'Uploading...' : buttonLabel}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              disabled={isUploading}
+              className="sr-only"
+              onChange={(event) => onUpload(event.target.files?.[0])}
+            />
+          </label>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={isUploading}
+              className="text-xs font-semibold text-red-500 hover:text-red-700 transition"
+            >
+              Remove
+            </button>
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="font-bold text-slate-900">{title}</h3>
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
-          {imageUrl ? (
-            <a
-              href={imageUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 block truncate text-sm font-semibold text-blue-700 hover:text-blue-800"
-            >
-              View uploaded image
-            </a>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <label className={`inline-flex cursor-pointer items-center justify-center ${button.primary}`}>
-          {isUploading ? 'Uploading...' : buttonLabel}
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            disabled={isUploading}
-            className="sr-only"
-            onChange={(event) => onUpload(event.target.files?.[0])}
-          />
-        </label>
-
-        {onDelete ? (
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={isUploading}
-            className={button.danger}
-          >
-            Delete logo
-          </button>
-        ) : null}
       </div>
     </div>
   );
@@ -541,34 +626,34 @@ function StatusBadge({ status }: { status: string }) {
   const s = String(status).trim().toLowerCase();
   if (s === 'submitted' || s === 'interested') {
     return (
-      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
+      <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
         Submitted
       </span>
     );
   }
   if (s === 'under review' || s === 'under_review') {
     return (
-      <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 border border-amber-200 animate-pulse">
+      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 animate-pulse">
         Under Review
       </span>
     );
   }
   if (s === 'approved') {
     return (
-      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 border border-emerald-200">
+      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
         Approved
       </span>
     );
   }
   if (s === 'rejected') {
     return (
-      <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 border border-red-200">
+      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
         Rejected
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700 border border-slate-200">
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700">
       {status}
     </span>
   );

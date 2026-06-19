@@ -9,7 +9,7 @@ exports.uploadFile = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
   }
   const subfolder = req.body.folder || req.body.documentType || 'general';
-  const result = await processUpload(req.file, subfolder);
+  const result = await processUpload(req.file, subfolder, req.user);
   res.status(201).json({
     success: true,
     data: {
@@ -26,7 +26,7 @@ exports.uploadProfileImage = asyncHandler(async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
   }
-  const result = await processUpload(req.file, 'profiles');
+  const result = await processUpload(req.file, `STUDENTS/${req.user.id}/PROFILES`, req.user);
   await studentService.updateProfile(req.user.id, { profileImage: result.url });
   res.json({ success: true, data: { fileUrl: result.url } });
 });
@@ -40,7 +40,7 @@ exports.uploadSchoolMedia = asyncHandler(async (req, res) => {
   if (!school) {
     return res.status(404).json({ success: false, message: 'No school assigned' });
   }
-  const result = await processUpload(req.file, 'schools');
+  const result = await processUpload(req.file, `SCHOOLS/${school.id}`, req.user);
   const field = req.body.type === 'logo' ? { logoUrl: result.url } : { description: school.description };
   if (req.body.type === 'logo') {
     await schoolService.update(school.id, { logoUrl: result.url, schoolName: school.school_name, city: school.city });

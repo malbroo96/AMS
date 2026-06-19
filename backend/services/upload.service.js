@@ -1,8 +1,8 @@
-const sharepointService = require('./sharepoint.service');
+const sharepointService = require('./sharepointService');
 const ApiError = require('../utils/ApiError');
 
-/** Handles file upload to SharePoint under AMS/{subfolder}/. */
-async function processUpload(file, subfolder = 'general') {
+/** Handles generic file upload to SharePoint under EADMIT PORTAL/{subfolder}/. */
+async function processUpload(file, subfolder = 'general', user = { id: 0 }) {
   if (!file) {
     throw new Error('No file provided');
   }
@@ -12,12 +12,23 @@ async function processUpload(file, subfolder = 'general') {
     throw new ApiError('File buffer missing — ensure multer memoryStorage is used', 500);
   }
 
-  return sharepointService.uploadFile({
+  const folderPath = `EADMIT PORTAL/${subfolder.toUpperCase()}`;
+  
+  const uploaded = await sharepointService.uploadFile({
     buffer,
     originalName: file.originalname,
     mimeType: file.mimetype,
-    subfolder,
+    folderPath,
+    entityType: 'General',
+    entityId: 0,
+    uploadedBy: user.id,
   });
+
+  return {
+    url: `/api/files/${uploaded.fileId}`,
+    publicId: uploaded.fileId,
+    storage: 'sharepoint'
+  };
 }
 
 module.exports = { processUpload };
