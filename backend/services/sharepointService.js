@@ -15,6 +15,10 @@ function graphPath(rawPath) {
   return String(rawPath).split('/').filter(Boolean).map(segment => encodeURIComponent(segment)).join('/');
 }
 
+function getConfiguredRootFolder() {
+  return String(sharepointConfig.folder || 'CollegeAssets').replace(/^\/+|\/+$/g, '');
+}
+
 async function ensureFolderExists(client, folderPath) {
   const parts = String(folderPath).split('/').filter(Boolean);
   let currentPath = '';
@@ -164,5 +168,6 @@ module.exports = {
   uploadFile,
   getFileMetadata,
   getFileStream,
-  deleteFile
+  deleteFile,
+  getConfiguredRootFolder
 };

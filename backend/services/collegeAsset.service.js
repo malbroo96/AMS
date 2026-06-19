@@ -2,6 +2,12 @@ const { sql, getPool } = require('../config/database');
 const sharepointService = require('./sharepointService');
 const ApiError = require('../utils/ApiError');
 
+function versionedAssetUrl(url, updatedAt) {
+  if (!url || !updatedAt || !url.startsWith('/api/files/')) return url || null;
+  const version = updatedAt instanceof Date ? updatedAt.getTime() : String(updatedAt);
+  return `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(version)}`;
+}
+
 async function resolveCollegeId(user, explicitId) {
   if (user.role === 'admin' && explicitId) {
     return parseInt(String(explicitId), 10);
@@ -21,9 +27,9 @@ const collegeAssetService = {
     const collegeId = await resolveCollegeId(user, rawCollegeId);
     if (!file) throw new ApiError('No file uploaded', 400);
 
-    const folderPath = `EADMIT PORTAL/COLLEGES/${collegeId}`;
+    const folderPath = `${sharepointService.getConfiguredRootFolder()}/${collegeId}`;
     
-    // Check if we already have an asset to delete
+    // Keep the current asset until the replacement is safely uploaded and saved.
     const column = assetType === 'logo' ? 'LogoUrl' : 'BannerUrl';
     const pool = await getPool();
     const existingRes = await pool.request()
@@ -31,15 +37,6 @@ const collegeAssetService = {
       .query(`SELECT ${column} FROM dbo.CollegeProfiles WHERE CollegeID = @cid`);
     
     const existingUrl = existingRes.recordset[0]?.[column];
-    if (existingUrl && existingUrl.includes('/api/files/')) {
-        const oldFileId = existingUrl.split('/api/files/')[1];
-        try {
-            await sharepointService.deleteFile(oldFileId);
-        } catch(e) {
-            console.error('Failed to delete old file from SharePoint:', e.message);
-        }
-    }
-
     const uploaded = await sharepointService.uploadFile({
         buffer: file.buffer,
         originalName: file.originalname,
@@ -52,17 +49,36 @@ const collegeAssetService = {
 
     const proxyUrl = `/api/files/${uploaded.fileId}`;
 
-    // Ensure CollegeProfile row exists
-    const exists = await pool.request().input('cid', sql.Int, collegeId).query('SELECT 1 FROM dbo.CollegeProfiles WHERE CollegeID = @cid');
-    if (!exists.recordset[0]) {
-      await pool.request().input('cid', sql.Int, collegeId).query('INSERT INTO dbo.CollegeProfiles (CollegeID) VALUES (@cid)');
+    try {
+      // Ensure CollegeProfile row exists, then persist the backend proxy URL.
+      const exists = await pool.request().input('cid', sql.Int, collegeId).query('SELECT 1 FROM dbo.CollegeProfiles WHERE CollegeID = @cid');
+      if (!exists.recordset[0]) {
+        await pool.request().input('cid', sql.Int, collegeId).query('INSERT INTO dbo.CollegeProfiles (CollegeID) VALUES (@cid)');
+      }
+
+      await pool
+        .request()
+        .input('cid', sql.Int, collegeId)
+        .input('url', sql.NVarChar(2048), proxyUrl)
+        .query(`UPDATE dbo.CollegeProfiles SET ${column} = @url, UpdatedAt = SYSUTCDATETIME() WHERE CollegeID = @cid`);
+    } catch (error) {
+      // Compensate for a SQL failure so SharePoint and FileMetadata do not retain an orphan.
+      try {
+        await sharepointService.deleteFile(uploaded.fileId);
+      } catch (cleanupError) {
+        console.error('Failed to clean up new SharePoint upload:', cleanupError.message);
+      }
+      throw error;
     }
 
-    await pool
-      .request()
-      .input('cid', sql.Int, collegeId)
-      .input('url', sql.NVarChar(2048), proxyUrl)
-      .query(`UPDATE dbo.CollegeProfiles SET ${column} = @url, UpdatedAt = SYSUTCDATETIME() WHERE CollegeID = @cid`);
+    if (existingUrl && existingUrl.includes('/api/files/')) {
+      const oldFileId = existingUrl.split('/api/files/')[1];
+      try {
+        await sharepointService.deleteFile(oldFileId);
+      } catch (error) {
+        console.error('Failed to delete old file from SharePoint:', error.message);
+      }
+    }
 
     return { collegeId, url: proxyUrl, assetType };
   },
@@ -109,11 +125,14 @@ const collegeAssetService = {
     const res = await pool
       .request()
       .input('cid', sql.Int, collegeId)
-      .query('SELECT LogoUrl, BannerUrl FROM dbo.CollegeProfiles WHERE CollegeID = @cid');
+      .query('SELECT LogoUrl, BannerUrl, UpdatedAt FROM dbo.CollegeProfiles WHERE CollegeID = @cid');
     const row = res.recordset[0] || {};
+    const logoUrl = versionedAssetUrl(row.LogoUrl, row.UpdatedAt);
+    const bannerUrl = versionedAssetUrl(row.BannerUrl, row.UpdatedAt);
     return {
-      logoUrl: row.LogoUrl || null,
-      coverBannerUrl: row.BannerUrl || null,
+      logoUrl,
+      bannerUrl,
+      coverBannerUrl: bannerUrl,
     };
   },
 };
