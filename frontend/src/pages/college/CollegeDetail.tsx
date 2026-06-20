@@ -146,10 +146,15 @@ const CollegeDetail: React.FC = () => {
             <h2>Courses Offered</h2>
             <div className="courses-grid">
               {(college.courses || []).map((course) => {
-                const fees = course.fees as { annualFee?: number | null } | undefined;
+                const fees = course.fees;
                 return (
                   <div key={String(course.id)} className="course-card">
-                    <h3>{String(course.courseName ?? 'Course')}</h3>
+                    <h3>
+                      {course.courseName ?? 'Course'}
+                      {course.branchName && (
+                        <span className="course-branch-title"> - {course.branchName}</span>
+                      )}
+                    </h3>
                     <p className="degree">{String(course.degreeType ?? '')}</p>
                     <div className="course-details">
                       <span>Duration: {String(course.duration ?? '-')} years</span>

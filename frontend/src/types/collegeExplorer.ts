@@ -1,4 +1,5 @@
 import type { CollegeProfileData } from '../api/ams';
+import type { CollegeCourse } from './index';
 
 export interface CollegeExplorerItem {
   id: string;
@@ -28,9 +29,6 @@ const logoTones = [
 
 const knownStudyModes = new Set(['Full-time', 'Hybrid', 'Online', 'Part-time']);
 
-function stringValue(value: unknown) {
-  return typeof value === 'string' ? value : '';
-}
 
 function numberValue(value: unknown, fallback: number) {
   const next = typeof value === 'number' ? value : Number(value);
@@ -41,13 +39,12 @@ function isPresentString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function courseName(course: Record<string, unknown>) {
-  return stringValue(course.courseName) || stringValue(course.CourseName) || stringValue(course.name);
+function courseName(course: CollegeCourse) {
+  return course.courseName || '';
 }
 
-function courseAnnualFee(course: Record<string, unknown>) {
-  const fees = course.fees && typeof course.fees === 'object' ? course.fees as Record<string, unknown> : {};
-  return numberValue(course.annualFee ?? course.AnnualFee ?? fees.annualFee, Number.POSITIVE_INFINITY);
+function courseAnnualFee(course: CollegeCourse) {
+  return course.fees?.annualFee ?? Number.POSITIVE_INFINITY;
 }
 
 export function mapProfileToExplorerCollege(profile: CollegeProfileData, index = 0): CollegeExplorerItem {
@@ -69,8 +66,8 @@ export function mapProfileToExplorerCollege(profile: CollegeProfileData, index =
   const feesFrom = numberValue(extra.feesFrom, Math.min(...courseFees));
 
   const courseBranchPairs = rawCourses.map((c) => ({
-    courseName: stringValue(c.courseName || c.CourseName || c.name),
-    branchName: stringValue(c.branchName || c.BranchName || c.branch),
+    courseName: c.courseName || '',
+    branchName: c.branchName || '',
   })).filter((c) => c.courseName && c.branchName);
 
   const branches = Array.isArray(profile.branches) && profile.branches.length > 0

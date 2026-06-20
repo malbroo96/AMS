@@ -1,5 +1,5 @@
 import api from './axios';
-import type { College, Interest, StudentProfile } from '../types';
+import type { College, Interest, StudentProfile, CollegeCourse } from '../types';
 
 export const getColleges = (params?: { search?: string; status?: string }) =>
   api.get<{ success: boolean; data: College[] }>('/ams/colleges', { params });
@@ -53,7 +53,7 @@ export interface CollegeProfileData {
     missionStatement?: string;
     principalMessage?: string;
   };
-  courses?: Array<Record<string, unknown>>;
+  courses?: CollegeCourse[];
   branches?: string[];
   achievements?: Array<Record<string, unknown>>;
   gallery?: Array<Record<string, unknown>>;
