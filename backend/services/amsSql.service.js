@@ -74,6 +74,16 @@ function buildCollegeProfilePayload(college, stats = {}) {
   };
 }
 
+function toSqlDateString(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
+  }
+  const date = raw instanceof Date ? raw : new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
 async function getRoleId(pool, roleName) {
   const r = await pool
     .request()
@@ -554,11 +564,7 @@ const amsSqlService = {
 
     const password = data.password || 'Student@123';
     const studentRoleId = await getRoleId(pool, 'student');
-    let dobVal = null;
-    if (data.dateOfBirth) {
-      const d = new Date(data.dateOfBirth);
-      if (!Number.isNaN(d.getTime())) dobVal = d;
-    }
+    const dobVal = toSqlDateString(data.dateOfBirth);
     const interestedCollegeId = parseInt(String(data.interestedCollege || ''), 10);
 
     const name = String(data.name || '').trim();
@@ -599,11 +605,11 @@ const amsSqlService = {
         .input('email', sql.NVarChar(255), email)
         .input('mobile', sql.NVarChar(30), data.mobile || data.phone || null)
         .input('gender', sql.NVarChar(20), data.gender || null)
-        .input('dob', sql.Date, dobVal)
+        .input('dob', sql.NVarChar(10), dobVal)
         .input('address', sql.NVarChar(255), data.address || null)
         .query(`
           INSERT INTO StudentProfiles (StudentID, FirstName, LastName, Email, Mobile, Gender, DateOfBirth, AddressLine1, ProfileStatus, ProfileCompletionPercentage)
-          VALUES (@studentId, @firstName, @lastName, @email, @mobile, @gender, @dob, @address, 'Complete', 100)
+          VALUES (@studentId, @firstName, @lastName, @email, @mobile, @gender, CONVERT(date, @dob, 23), @address, 'Complete', 100)
         `);
 
       await new sql.Request(transaction)
@@ -702,8 +708,7 @@ const amsSqlService = {
 
     let dobVal = row.DateOfBirth;
     if (data.dateOfBirth !== undefined) {
-      const d = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
-      dobVal = d && !Number.isNaN(d.getTime()) ? d : null;
+      dobVal = toSqlDateString(data.dateOfBirth);
     }
 
     const name = String(data.name || row.FirstName + ' ' + (row.LastName || '')).trim();
@@ -735,12 +740,12 @@ const amsSqlService = {
         .input('email', sql.NVarChar(255), nextEmail)
         .input('mobile', sql.NVarChar(30), data.mobile ?? row.Mobile ?? null)
         .input('gender', sql.NVarChar(20), data.gender ?? row.Gender ?? null)
-        .input('dob', sql.Date, dobVal)
+        .input('dob', sql.NVarChar(10), dobVal instanceof Date ? dobVal.toISOString().slice(0, 10) : dobVal)
         .input('address', sql.NVarChar(255), data.address ?? row.Address ?? null)
         .query(`
           UPDATE StudentProfiles
           SET FirstName = @firstName, LastName = @lastName, Email = @email, Mobile = @mobile,
-              Gender = @gender, DateOfBirth = @dob, AddressLine1 = @address
+              Gender = @gender, DateOfBirth = CONVERT(date, @dob, 23), AddressLine1 = @address
           WHERE StudentID = @id
         `);
 

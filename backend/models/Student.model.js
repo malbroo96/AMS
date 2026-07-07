@@ -1,5 +1,21 @@
 const { sql, getPool } = require('../config/database');
 
+function toSqlDateString(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
+  }
+  const date = raw instanceof Date ? raw : new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
+function toSqlDecimal(raw) {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
 const StudentModel = {
   async findByUserId(userId) {
     const pool = await getPool();
@@ -107,10 +123,6 @@ const StudentModel = {
   },
 
   async update(userId, data) {
-    const id = userId;
-    console.log("Student Profile Update ID:", id);
-    console.log("Type:", typeof id);
-
     const pool = await getPool();
     const studentCheck = await pool
       .request()
@@ -119,6 +131,8 @@ const StudentModel = {
     const student = studentCheck.recordset[0];
     if (!student) return null;
     const studentId = student.StudentID;
+    const dob = toSqlDateString(data.dob);
+    const percentage = toSqlDecimal(data.percentage);
 
     // Upsert StudentProfiles
     const profileCheck = await pool
@@ -144,14 +158,14 @@ const StudentModel = {
       await pool
         .request()
         .input('student_id', sql.Int, studentId)
-        .input('dob', sql.Date, data.dob || null)
+        .input('dob', sql.NVarChar(10), dob)
         .input('gender', sql.NVarChar(20), data.gender || null)
         .input('parent_name', sql.NVarChar(150), data.parentName || null)
         .input('address', sql.NVarChar(255), data.address || null)
         .input('profile_image', sql.NVarChar(2048), data.profileImage || null)
         .query(`
           UPDATE StudentProfiles
-          SET DateOfBirth = @dob, Gender = @gender, FatherName = @parent_name,
+          SET DateOfBirth = CONVERT(date, @dob, 23), Gender = @gender, FatherName = @parent_name,
               AddressLine1 = @address, ProfilePhotoUrl = @profile_image,
               UpdatedAt = SYSUTCDATETIME()
           WHERE StudentID = @student_id
@@ -162,14 +176,14 @@ const StudentModel = {
         .input('student_id', sql.Int, studentId)
         .input('first_name', sql.NVarChar(100), firstName)
         .input('last_name', sql.NVarChar(100), lastName)
-        .input('dob', sql.Date, data.dob || null)
+        .input('dob', sql.NVarChar(10), dob)
         .input('gender', sql.NVarChar(20), data.gender || null)
         .input('parent_name', sql.NVarChar(150), data.parentName || null)
         .input('address', sql.NVarChar(255), data.address || null)
         .input('profile_image', sql.NVarChar(2048), data.profileImage || null)
         .query(`
           INSERT INTO StudentProfiles (StudentID, FirstName, LastName, DateOfBirth, Gender, FatherName, AddressLine1, ProfilePhotoUrl, ProfileCompletionPercentage, ProfileStatus)
-          VALUES (@student_id, @first_name, @last_name, @dob, @gender, @parent_name, @address, @profile_image, 0, 'Incomplete')
+          VALUES (@student_id, @first_name, @last_name, CONVERT(date, @dob, 23), @gender, @parent_name, @address, @profile_image, 0, 'Incomplete')
         `);
     }
 
@@ -186,7 +200,7 @@ const StudentModel = {
         .input('student_id', sql.Int, studentId)
         .input('grade', sql.NVarChar(100), data.grade || null)
         .input('board', sql.NVarChar(100), data.board || null)
-        .input('percentage', sql.Decimal(5, 2), data.percentage ?? null)
+        .input('percentage', sql.Decimal(5, 2), percentage)
         .query(`
           UPDATE StudentAcademicDetails
           SET Qualification = @grade, Board = @board, TenthPercentage = @percentage,
@@ -199,7 +213,7 @@ const StudentModel = {
         .input('student_id', sql.Int, studentId)
         .input('grade', sql.NVarChar(100), data.grade || null)
         .input('board', sql.NVarChar(100), data.board || null)
-        .input('percentage', sql.Decimal(5, 2), data.percentage ?? null)
+        .input('percentage', sql.Decimal(5, 2), percentage)
         .query(`
           INSERT INTO StudentAcademicDetails (StudentID, Qualification, Board, TenthPercentage)
           VALUES (@student_id, @grade, @board, @percentage)
