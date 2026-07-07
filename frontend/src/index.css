@@ -18,6 +18,14 @@
   --font-serif: "Cormorant Garamond", ui-serif, Georgia, serif;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+}
+
 .hero-pinstripe {
   background-color: #0a0a0a;
   background-image: repeating-linear-gradient(
