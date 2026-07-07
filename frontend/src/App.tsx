@@ -13,14 +13,13 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ de
 
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard').then((m) => ({ default: m.StudentDashboard })));
 const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then((m) => ({ default: m.StudentProfile })));
-const CollegeDashboard = lazy(() => import('./pages/college/CollegeDashboard').then((m) => ({ default: m.CollegeDashboard })));
+const CollegePortalWorkspace = lazy(() => import('./pages/college/CollegePortalWorkspace').then((m) => ({ default: m.CollegePortalWorkspace })));
 const CollegeSearch = lazy(() => import('./pages/college/CollegeSearch').then((m) => ({ default: m.default })));
 const CollegeDetail = lazy(() => import('./pages/college/CollegeDetail').then((m) => ({ default: m.default })));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 const AdminColleges = lazy(() => import('./pages/admin/AdminColleges').then((m) => ({ default: m.AdminColleges })));
 const AdminStudents = lazy(() => import('./pages/admin/AdminStudents').then((m) => ({ default: m.AdminStudents })));
 const AdminPermissions = lazy(() => import('./pages/admin/AdminPermissions').then((m) => ({ default: m.AdminPermissions })));
-const CollegeProfileAdmin = lazy(() => import('./pages/college/CollegeProfileAdmin').then((m) => ({ default: m.default })));
 const ApplyAdmission = lazy(() => import('./pages/student/ApplyAdmission').then((m) => ({ default: m.ApplyAdmission })));
 
 function PageLoader() {
@@ -52,9 +51,8 @@ function App() {
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={['college']} />}>
-                <Route path="/dashboard/college" element={<CollegeDashboard />} />
-                <Route path="/dashboard/college/profile" element={<CollegeProfileAdmin />} />
-                <Route path="/dashboard/college/profile/:collegeId" element={<CollegeProfileAdmin />} />
+                <Route path="/dashboard/college" element={<CollegePortalWorkspace />} />
+                <Route path="/dashboard/college/*" element={<CollegePortalWorkspace />} />
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>

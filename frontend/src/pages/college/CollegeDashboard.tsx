@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import {
   deleteCollegeLogo,
@@ -11,12 +10,11 @@ import {
   type CollegeAssets,
 } from '../../api/ams';
 import { updateApplicationStatus } from '../../api/applications';
-import { button, form, shell, table } from '../../components/ui/designTokens';
+import { button, form, table } from '../../components/ui/designTokens';
 import { useToast } from '../../context/ToastContext';
 import type { College } from '../../types';
 
 export function CollegeDashboard() {
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const [data, setData] = useState<{ college?: College; stats?: Record<string, number>; students?: Array<Record<string, unknown>> }>({});
   const [assets, setAssets] = useState<CollegeAssets | null>(null);

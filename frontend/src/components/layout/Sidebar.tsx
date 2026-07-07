@@ -9,21 +9,17 @@ interface NavItem {
   label: string;
 }
 
-const navByRole: Record<UserRole, NavItem[]> = {
+interface NavGroup {
+  label: string;
+  icon: string;
+  items: NavItem[];
+}
+
+const navByRole: Record<Exclude<UserRole, 'college'>, NavItem[]> = {
   student: [
     { to: '/dashboard/student', label: 'Dashboard' },
     { to: '/dashboard/student?view=colleges', label: 'Colleges' },
     { to: '/dashboard/student/profile', label: 'Profile' },
-  ],
-  college: [
-    { to: '/dashboard/college', label: 'Dashboard' },
-    { to: '/dashboard/college/profile', label: 'College Profile' },
-    { to: '/dashboard/college?view=students', label: 'Interested Students' },
-    { to: '/dashboard/college/applications', label: 'Applications' },
-    { to: '/dashboard/college/courses', label: 'Courses' },
-    { to: '/dashboard/college/notices', label: 'Notices' },
-    { to: '/dashboard/college/reports', label: 'Reports' },
-    { to: '/dashboard/college/settings', label: 'Settings' },
   ],
   admin: [
     { to: '/dashboard/admin', label: 'Dashboard' },
@@ -32,6 +28,106 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { to: '/dashboard/admin/permissions', label: 'Permissions' },
   ],
 };
+
+const collegeNavGroups: NavGroup[] = [
+  {
+    label: 'Dashboard',
+    icon: 'D',
+    items: [
+      { to: '/dashboard/college', label: 'Overview' },
+      { to: '/dashboard/college/statistics', label: 'Statistics' },
+      { to: '/dashboard/college/recent-applications', label: 'Recent Applications' },
+      { to: '/dashboard/college/notifications', label: 'Notifications' },
+      { to: '/dashboard/college/quick-actions', label: 'Quick Actions' },
+      { to: '/dashboard/college/analytics', label: 'Analytics' },
+    ],
+  },
+  {
+    label: 'College Profile',
+    icon: 'P',
+    items: [
+      { to: '/dashboard/college/profile/basic', label: 'Basic Information' },
+      { to: '/dashboard/college/profile/contact', label: 'Contact Details' },
+      { to: '/dashboard/college/profile/address', label: 'Address' },
+      { to: '/dashboard/college/profile/assets', label: 'Assets' },
+      { to: '/dashboard/college/profile/facilities', label: 'Facilities' },
+      { to: '/dashboard/college/profile/admission', label: 'Admission Information' },
+      { to: '/dashboard/college/profile/documents', label: 'Documents' },
+    ],
+  },
+  {
+    label: 'Courses',
+    icon: 'C',
+    items: [
+      { to: '/dashboard/college/courses', label: 'Course Management' },
+      { to: '/dashboard/college/courses/departments', label: 'Departments' },
+      { to: '/dashboard/college/courses/intake-fees', label: 'Intake & Fees' },
+      { to: '/dashboard/college/courses/eligibility', label: 'Eligibility' },
+      { to: '/dashboard/college/courses/seats', label: 'Seat Availability' },
+    ],
+  },
+  {
+    label: 'Interested Students',
+    icon: 'S',
+    items: [
+      { to: '/dashboard/college/students', label: 'Student List' },
+      { to: '/dashboard/college/students/search', label: 'Search & Filters' },
+      { to: '/dashboard/college/students/profile', label: 'Student Profile' },
+      { to: '/dashboard/college/students/contact', label: 'Contact/Invite' },
+      { to: '/dashboard/college/students/export', label: 'Export' },
+    ],
+  },
+  {
+    label: 'Applications',
+    icon: 'A',
+    items: [
+      { to: '/dashboard/college/applications/pending', label: 'Pending' },
+      { to: '/dashboard/college/applications/under-review', label: 'Under Review' },
+      { to: '/dashboard/college/applications/approved', label: 'Approved' },
+      { to: '/dashboard/college/applications/rejected', label: 'Rejected' },
+      { to: '/dashboard/college/applications/student-details', label: 'Student Details' },
+      { to: '/dashboard/college/applications/document-verification', label: 'Document Verification' },
+      { to: '/dashboard/college/applications/notes', label: 'Notes' },
+      { to: '/dashboard/college/applications/filters', label: 'Filters' },
+    ],
+  },
+  {
+    label: 'Notices',
+    icon: 'N',
+    items: [
+      { to: '/dashboard/college/notices/create', label: 'Create Notice' },
+      { to: '/dashboard/college/notices/published', label: 'Published Notices' },
+      { to: '/dashboard/college/notices/drafts', label: 'Drafts' },
+      { to: '/dashboard/college/notices/categories', label: 'Categories' },
+      { to: '/dashboard/college/notices/attachments', label: 'Attachments' },
+    ],
+  },
+  {
+    label: 'Reports',
+    icon: 'R',
+    items: [
+      { to: '/dashboard/college/reports/admissions', label: 'Admission Reports' },
+      { to: '/dashboard/college/reports/students', label: 'Student Reports' },
+      { to: '/dashboard/college/reports/courses', label: 'Course Reports' },
+      { to: '/dashboard/college/reports/analytics', label: 'Analytics' },
+      { to: '/dashboard/college/reports/export', label: 'Export' },
+    ],
+  },
+  {
+    label: 'Settings',
+    icon: 'G',
+    items: [
+      { to: '/dashboard/college/settings/account', label: 'Account' },
+      { to: '/dashboard/college/settings/security', label: 'Security' },
+      { to: '/dashboard/college/settings/users-roles', label: 'Users & Roles' },
+      { to: '/dashboard/college/settings/notifications', label: 'Notifications' },
+      { to: '/dashboard/college/settings/branding', label: 'Branding' },
+      { to: '/dashboard/college/settings/integrations', label: 'Integrations' },
+      { to: '/dashboard/college/settings/backup', label: 'Backup' },
+      { to: '/dashboard/college/settings/audit-logs', label: 'Audit Logs' },
+    ],
+  },
+];
 
 const rolePortalLabel: Record<UserRole, string> = {
   student: 'Student Portal',
@@ -49,8 +145,22 @@ interface SidebarProps {
 
 export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
   function Sidebar({ role, open, menuButtonRef, onMenuToggle, onClose }, ref) {
-    const items = navByRole[role];
+    const items = role === 'college' ? [] : navByRole[role];
     const location = useLocation();
+
+    const isActiveLink = (item: NavItem) => {
+      const [itemPath, itemQuery] = item.to.split('?');
+
+      if (itemQuery) {
+        return location.pathname === itemPath && location.search === `?${itemQuery}`;
+      }
+
+      if (item.to.endsWith('/student') || item.to.endsWith('/college') || item.to.endsWith('/admin')) {
+        return location.pathname === item.to && !location.search;
+      }
+
+      return location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+    };
 
     return (
       <>
@@ -91,35 +201,50 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
               <span className="hamburger-button__line" />
             </button>
           </div>
-          <nav className="sidebar__nav">
-            {items.map((item) => {
-              const [itemPath, itemQuery] = item.to.split('?');
-              let isActive = false;
-              
-              if (itemQuery) {
-                // For links with query params (e.g. ?view=students), match path and query exactly
-                isActive = location.pathname === itemPath && location.search === `?${itemQuery}`;
-              } else {
-                // For root dashboard links, match exactly without any query params
-                if (item.to.endsWith('/student') || item.to.endsWith('/college') || item.to.endsWith('/admin')) {
-                  isActive = location.pathname === item.to && !location.search;
-                } else {
-                  // For other subpaths (e.g. /profile, /applications), match prefix
-                  isActive = location.pathname.startsWith(item.to);
-                }
-              }
+          <nav className="sidebar__nav" aria-label={`${rolePortalLabel[role]} navigation`}>
+            {role === 'college'
+              ? collegeNavGroups.map((group) => {
+                  const groupActive = group.items.some(isActiveLink);
 
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={onClose}
-                  className={`sidebar__link${isActive ? ' sidebar__link--active' : ''}`}
-                >
-                  {item.label}
-                </NavLink>
-              );
-            })}
+                  return (
+                    <section key={group.label} className="sidebar__group">
+                      <div className={`sidebar__group-title${groupActive ? ' sidebar__group-title--active' : ''}`}>
+                        <span className="sidebar__group-icon" aria-hidden="true">{group.icon}</span>
+                        <span>{group.label}</span>
+                      </div>
+                      <div className="sidebar__subnav">
+                        {group.items.map((item) => {
+                          const isActive = isActiveLink(item);
+
+                          return (
+                            <NavLink
+                              key={item.to}
+                              to={item.to}
+                              onClick={onClose}
+                              className={`sidebar__link sidebar__link--nested${isActive ? ' sidebar__link--active' : ''}`}
+                            >
+                              {item.label}
+                            </NavLink>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })
+              : items.map((item) => {
+                  const isActive = isActiveLink(item);
+
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={onClose}
+                      className={`sidebar__link${isActive ? ' sidebar__link--active' : ''}`}
+                    >
+                      {item.label}
+                    </NavLink>
+                  );
+                })}
           </nav>
         </aside>
       </>
