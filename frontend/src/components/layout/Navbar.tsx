@@ -1,11 +1,14 @@
+import type { RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 interface NavbarProps {
   onMenuToggle?: () => void;
+  menuButtonRef?: RefObject<HTMLButtonElement | null>;
+  menuOpen?: boolean;
 }
 
-export function Navbar({ onMenuToggle }: NavbarProps) {
+export function Navbar({ onMenuToggle, menuButtonRef, menuOpen = false }: NavbarProps) {
   const { user, logout } = useAuth();
 
   const homeLink = user
@@ -22,9 +25,12 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
         {onMenuToggle && (
           <button
             type="button"
+            ref={menuButtonRef}
             onClick={onMenuToggle}
-            className="flex h-10 w-10 flex-col items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 lg:hidden"
-            aria-label="Toggle menu"
+            className={`dashboard-menu-button flex h-10 w-10 flex-col items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 lg:hidden${menuOpen ? ' dashboard-menu-button--active' : ''}`}
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+            aria-controls="dashboard-sidebar"
           >
             <span className="h-0.5 w-5 rounded-full bg-slate-600" />
             <span className="h-0.5 w-5 rounded-full bg-slate-600" />

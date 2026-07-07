@@ -1,4 +1,4 @@
-import { forwardRef, type RefObject } from 'react';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { LogoMark } from '../LogoMark';
 import type { UserRole } from '../../types';
@@ -138,17 +138,15 @@ const rolePortalLabel: Record<UserRole, string> = {
 interface SidebarProps {
   role: UserRole;
   open: boolean;
-  menuButtonRef: RefObject<HTMLButtonElement | null>;
-  onMenuToggle: () => void;
   onClose: () => void;
 }
 
 export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
-  function Sidebar({ role, open, menuButtonRef, onMenuToggle, onClose }, ref) {
+  function Sidebar({ role, open, onClose }, ref) {
     const items = role === 'college' ? [] : navByRole[role];
     const location = useLocation();
 
-    const isActiveLink = (item: NavItem) => {
+    const isActiveLink = useMemo(() => (item: NavItem) => {
       const [itemPath, itemQuery] = item.to.split('?');
 
       if (itemQuery) {
@@ -160,14 +158,38 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
       }
 
       return location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
-    };
+    }, [location.pathname, location.search]);
+
+    const activeCollegeGroup = useMemo(
+      () => collegeNavGroups.find((group) => group.items.some(isActiveLink))?.label ?? '',
+      [isActiveLink]
+    );
+    const [expandedGroup, setExpandedGroup] = useState(() => {
+      if (activeCollegeGroup) return activeCollegeGroup;
+      return window.sessionStorage.getItem('college-sidebar-expanded') ?? collegeNavGroups[0]?.label ?? '';
+    });
+
+    useEffect(() => {
+      if (activeCollegeGroup) {
+        setExpandedGroup(activeCollegeGroup);
+      }
+    }, [activeCollegeGroup]);
+
+    useEffect(() => {
+      if (expandedGroup) {
+        window.sessionStorage.setItem('college-sidebar-expanded', expandedGroup);
+        return;
+      }
+
+      window.sessionStorage.removeItem('college-sidebar-expanded');
+    }, [expandedGroup]);
 
     return (
       <>
         {open && (
           <button
             type="button"
-            className="sidebar-overlay fixed inset-0 z-30 lg:hidden"
+            className="sidebar-overlay fixed inset-0 z-30 md:hidden"
             onClick={onClose}
             aria-label="Close menu"
           />
@@ -175,58 +197,57 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
         <aside
           ref={ref}
           id="dashboard-sidebar"
-          className={`sidebar fixed inset-y-0 left-0 z-40 flex w-64 flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-            open ? 'translate-x-0' : '-translate-x-full'
-          }`}
+          className={`sidebar fixed inset-y-0 left-0 z-40 flex flex-col${open ? ' sidebar--open' : ''}`}
         >
           <div className="sidebar__brand">
             <div className="sidebar__brand-content">
               <LogoMark className="size-10" variant="light" />
-              <div>
+              <div className="sidebar__brand-text">
                 <p className="sidebar__brand-label">Eadmin Portal</p>
                 <p className="sidebar__brand-title">{rolePortalLabel[role]}</p>
               </div>
             </div>
-            <button
-              ref={menuButtonRef}
-              type="button"
-              onClick={onMenuToggle}
-              className={`hamburger-button sidebar__toggle lg:hidden${open ? ' hamburger-button--active sidebar__toggle--open' : ''}`}
-              aria-label={open ? 'Close menu' : 'Open menu'}
-              aria-expanded={open}
-              aria-controls="dashboard-sidebar"
-            >
-              <span className="hamburger-button__line" />
-              <span className="hamburger-button__line" />
-              <span className="hamburger-button__line" />
-            </button>
           </div>
           <nav className="sidebar__nav" aria-label={`${rolePortalLabel[role]} navigation`}>
             {role === 'college'
               ? collegeNavGroups.map((group) => {
                   const groupActive = group.items.some(isActiveLink);
+                  const isExpanded = expandedGroup === group.label;
+                  const panelId = `sidebar-panel-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
                   return (
-                    <section key={group.label} className="sidebar__group">
-                      <div className={`sidebar__group-title${groupActive ? ' sidebar__group-title--active' : ''}`}>
+                    <section
+                      key={group.label}
+                      className={`sidebar__group${groupActive ? ' sidebar__group--active' : ''}${isExpanded ? ' sidebar__group--expanded' : ''}`}
+                    >
+                      <button
+                        type="button"
+                        className={`sidebar__group-title${groupActive ? ' sidebar__group-title--active' : ''}`}
+                        onClick={() => setExpandedGroup((current) => (current === group.label ? '' : group.label))}
+                        aria-expanded={isExpanded}
+                        aria-controls={panelId}
+                      >
                         <span className="sidebar__group-icon" aria-hidden="true">{group.icon}</span>
-                        <span>{group.label}</span>
-                      </div>
-                      <div className="sidebar__subnav">
-                        {group.items.map((item) => {
-                          const isActive = isActiveLink(item);
+                        <span className="sidebar__group-label">{group.label}</span>
+                        <span className="sidebar__group-chevron" aria-hidden="true">&gt;</span>
+                      </button>
+                      <div id={panelId} className="sidebar__subnav-shell">
+                        <div className="sidebar__subnav">
+                          {group.items.map((item) => {
+                            const isActive = isActiveLink(item);
 
-                          return (
-                            <NavLink
-                              key={item.to}
-                              to={item.to}
-                              onClick={onClose}
-                              className={`sidebar__link sidebar__link--nested${isActive ? ' sidebar__link--active' : ''}`}
-                            >
-                              {item.label}
-                            </NavLink>
-                          );
-                        })}
+                            return (
+                              <NavLink
+                                key={item.to}
+                                to={item.to}
+                                onClick={onClose}
+                                className={`sidebar__link sidebar__link--nested${isActive ? ' sidebar__link--active' : ''}`}
+                              >
+                                {item.label}
+                              </NavLink>
+                            );
+                          })}
+                        </div>
                       </div>
                     </section>
                   );
