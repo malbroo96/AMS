@@ -3,7 +3,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const { sql, getPool, closePool } = require('../config/database');
 
-const DEFAULT_WORKBOOK = 'C:\\Users\\SumoTech-HP-840-G3\\Downloads\\College - Courses - FEE Details (1).xlsx';
+const DEFAULT_WORKBOOK = 'C:\\Users\\SumoTech-HP-840-G3\\Downloads\\College - Courses - FEE Details (3).xlsx';
 const DEFAULT_PASSWORD = 'tagme!23';
 const DEFAULT_TOTAL_SEATS = 0;
 
@@ -27,6 +27,15 @@ function slug(value) {
 
 function normalizeName(value) {
   return cleanText(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function normalizeEmail(value) {
+  const email = cleanText(value).toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '';
+}
+
+function importedEmail(row) {
+  return `${slug(row.collegeName)}@import.local`.slice(0, 255);
 }
 
 function uniqueCode(value, suffix = '') {
@@ -155,6 +164,7 @@ foreach ($row in $sheet.worksheet.sheetData.row) {
     courses = [string]$vals[3]
     feeStructure = [string]$vals[4]
     scholarships = [string]$vals[5]
+    email = [string]$vals[6]
   }
 }
 if ($zip) { $zip.Dispose() }
@@ -178,6 +188,7 @@ $rows | ConvertTo-Json -Depth 5
       courses: cleanText(row.courses),
       feeStructure: cleanText(row.feeStructure),
       scholarships: cleanText(row.scholarships),
+      email: normalizeEmail(row.email),
     }))
     .filter((row) => row.collegeName);
 }
@@ -238,22 +249,29 @@ async function getRoleId(pool, roleName) {
 }
 
 async function upsertCollegeUser(pool, row, roleId, passwordHash) {
-  const email = `${slug(row.collegeName)}@import.local`.slice(0, 255);
+  const email = (row.importEmail || importedEmail(row)).slice(0, 255);
   const name = row.collegeName.slice(0, 150);
+  const college = await pool.request()
+    .input('name', sql.NVarChar(150), row.collegeName.slice(0, 150))
+    .query('SELECT UserID FROM dbo.Colleges WHERE LOWER(CollegeName) = LOWER(@name)');
+  const collegeUserId = college.recordset[0]?.UserID;
+
   const existing = await pool.request()
     .input('email', sql.NVarChar(255), email)
     .query('SELECT UserID FROM dbo.Users WHERE LOWER(Email) = LOWER(@email)');
-  const userId = existing.recordset[0]?.UserID;
+  let userId = existing.recordset[0]?.UserID || collegeUserId;
 
   if (userId) {
     await pool.request()
       .input('userId', sql.Int, userId)
       .input('roleId', sql.Int, roleId)
+      .input('email', sql.NVarChar(255), email)
       .input('passwordHash', sql.NVarChar(255), passwordHash)
       .input('fullName', sql.NVarChar(150), name)
       .query(`
         UPDATE dbo.Users
         SET RoleID = @roleId,
+            Email = @email,
             PasswordHash = @passwordHash,
             FullName = @fullName,
             IsActive = 1,
@@ -372,11 +390,28 @@ async function main() {
   const workbookPath = path.resolve(process.argv[2] || DEFAULT_WORKBOOK);
   const defaultPassword = process.env.IMPORT_DEFAULT_PASSWORD || DEFAULT_PASSWORD;
   const rows = readWorkbookRows(workbookPath);
+  const emailCounts = rows.reduce((counts, row) => {
+    if (row.email) counts.set(row.email, (counts.get(row.email) || 0) + 1);
+    return counts;
+  }, new Map());
+
+  rows.forEach((row) => {
+    row.importEmail = row.email && emailCounts.get(row.email) === 1 ? row.email : importedEmail(row);
+  });
+
   const pool = await getPool();
   const collegeRoleId = await getRoleId(pool, 'college');
   const passwordHash = await bcrypt.hash(defaultPassword, 12);
 
-  const summary = { workbookPath, rows: rows.length, colleges: 0, courses: 0, skippedCourseRows: 0 };
+  const summary = {
+    workbookPath,
+    rows: rows.length,
+    uniqueWorkbookEmails: rows.filter((row) => row.email && row.importEmail === row.email).length,
+    fallbackEmails: rows.filter((row) => row.importEmail !== row.email).length,
+    colleges: 0,
+    courses: 0,
+    skippedCourseRows: 0,
+  };
 
   for (const row of rows) {
     try {
