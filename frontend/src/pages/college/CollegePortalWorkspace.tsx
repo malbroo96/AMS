@@ -15,6 +15,8 @@ import {
 import { updateApplicationStatus } from '../../api/applications';
 import { button, form, table } from '../../components/ui/designTokens';
 import { useToast } from '../../context/ToastContext';
+import { CollegeNotificationsPage, CollegeNotificationsPreview } from '../../components/layout/CollegeNotifications';
+import { publishCollegeNotification } from '../../context/CollegeNotificationsContext';
 import type { College } from '../../types';
 
 type DashboardData = {
@@ -409,6 +411,12 @@ export function CollegePortalWorkspace() {
           : current.college,
       }));
       showToast('College profile updated successfully', 'success');
+      publishCollegeNotification({
+        type: 'Profile',
+        title: 'Profile updated',
+        description: 'Your college profile changes were saved successfully.',
+        priority: 'success',
+      });
     } catch {
       showToast('Unable to update college profile', 'error');
     } finally {
@@ -433,6 +441,12 @@ export function CollegePortalWorkspace() {
       if (type === 'banner') await uploadCollegeBanner(file);
       await refreshAssets();
       showToast(`${type === 'logo' ? 'Logo' : 'Banner'} uploaded successfully`, 'success');
+      publishCollegeNotification({
+        type: 'Profile',
+        title: `${type === 'logo' ? 'Logo' : 'Banner'} updated`,
+        description: `Your college ${type} asset is now updated on the portal.`,
+        priority: 'success',
+      });
     } catch {
       showToast(`Unable to upload ${type}`, 'error');
     } finally {
@@ -448,6 +462,12 @@ export function CollegePortalWorkspace() {
       await deleteCollegeLogo(collegeId);
       await refreshAssets();
       showToast('Logo removed successfully', 'success');
+      publishCollegeNotification({
+        type: 'Profile',
+        title: 'Logo removed',
+        description: 'Your college profile is missing a logo asset.',
+        priority: 'reminder',
+      });
     } catch {
       showToast('Unable to remove logo', 'error');
     } finally {
@@ -463,6 +483,12 @@ export function CollegePortalWorkspace() {
       const res = await getCollegeDashboard();
       setDashboard(res.data.data);
       showToast('Access request submitted', 'success');
+      publishCollegeNotification({
+        type: 'Application',
+        title: 'Application moved to review',
+        description: `${String(student.name || 'A student')} was moved to under review after access request.`,
+        priority: 'info',
+      });
     } catch {
       showToast('Unable to request access', 'error');
     }
@@ -551,7 +577,7 @@ function DashboardPage({ path, dashboard, assets, rawStudents }: Parameters<type
   }
 
   if (path === '/dashboard/college/notifications') {
-    return <NotificationList stats={stats} assets={assets} />;
+    return <CollegeNotificationsPage />;
   }
 
   if (path === '/dashboard/college/quick-actions') {
@@ -595,7 +621,7 @@ function DashboardPage({ path, dashboard, assets, rawStudents }: Parameters<type
         <StudentTable students={rawStudents.slice(0, 5)} showActions={false} />
       </div>
       <aside className="space-y-6">
-        <NotificationList stats={stats} assets={assets} />
+        <CollegeNotificationsPreview />
         <QuickActions />
       </aside>
     </div>
@@ -760,12 +786,21 @@ function ApplicationsPage({ path, students, requestAccess }: Parameters<typeof r
 
 function NoticesPage({ path }: Parameters<typeof renderPage>[0]) {
   if (path.endsWith('/create')) {
+    const publishNotice = () => {
+      publishCollegeNotification({
+        type: 'Notice',
+        title: 'Notice published',
+        description: 'Your admission notice was published for students.',
+        priority: 'success',
+      });
+    };
+
     return (
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="grid gap-4">
           <input className={form.input} placeholder="Notice title" />
           <textarea className={form.input} rows={6} placeholder="Notice body" />
-          <button type="button" className={`${button.primary} w-fit`}>Save draft</button>
+          <button type="button" onClick={publishNotice} className={`${button.primary} w-fit`}>Publish notice</button>
         </div>
       </section>
     );
@@ -966,15 +1001,6 @@ function courseValue(course: Record<string, unknown>, column: string) {
     'Seat Availability': course.seats || course.TotalSeats || '-',
   };
   return String(lookup[column] || '-');
-}
-
-function NotificationList({ stats, assets }: { stats: Record<string, number>; assets: CollegeAssets | null }) {
-  const items = [
-    `${stats.interestedStudents || 0} interested students are available for review.`,
-    assets?.logoUrl && assets?.bannerUrl ? 'Profile assets are complete.' : 'Logo or banner is missing from the profile.',
-    `${stats.hiddenProfiles || 0} student profiles are hidden until access is granted.`,
-  ];
-  return <ListPanel items={items} empty="No notifications." />;
 }
 
 function QuickActions() {

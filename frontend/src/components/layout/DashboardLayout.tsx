@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { CollegeNotificationsProvider } from '../../context/CollegeNotificationsContext';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 
@@ -61,7 +62,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
   if (!user) return null;
 
-  return (
+  const shell = (
     <div className={`dashboard-shell bg-slate-50 font-sans${sidebarOpen ? ' dashboard-shell--sidebar-open' : ''}`}>
       <Sidebar
         ref={sidebarRef}
@@ -79,4 +80,10 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
+
+  if (user.role === 'college') {
+    return <CollegeNotificationsProvider>{shell}</CollegeNotificationsProvider>;
+  }
+
+  return shell;
 }
