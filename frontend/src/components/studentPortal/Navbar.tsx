@@ -69,10 +69,10 @@ export function Navbar() {
 
             <Link to="/" className="flex min-w-0 items-center gap-3">
               <span className="flex size-10 items-center justify-center rounded-xl border border-blue-100 bg-blue-50">
-                <img src={logoNav} alt="AMS Student Portal" className="size-7 object-contain" />
+                <img src={logoNav} alt="E admit Portal" className="size-7 object-contain" />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-sm font-bold text-slate-900 sm:text-base">AMS Student Portal</span>
+                <span className="block truncate text-sm font-bold text-slate-900 sm:text-base">E Admit Portal</span>
                 <span className="hidden text-xs font-medium text-slate-500 sm:block">College admissions discovery</span>
               </span>
             </Link>

@@ -60,6 +60,7 @@ CREATE TABLE dbo.Colleges (
     CollegeID INT IDENTITY(1,1) NOT NULL,
     UserID INT NOT NULL,
     CollegeName NVARCHAR(150) NOT NULL,
+     CollegeAddress NVARCHAR(255) NULL,
     Email NVARCHAR(255) NOT NULL,
     Status NVARCHAR(20) NOT NULL CONSTRAINT DF_Colleges_Status DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
     IsActive BIT NOT NULL CONSTRAINT DF_Colleges_IsActive DEFAULT 1,

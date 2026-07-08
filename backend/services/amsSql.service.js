@@ -929,22 +929,14 @@ const amsSqlService = {
         .input('collegeName', sql.VarChar(150), data.collegeName)
         .input('email', sql.VarChar(255), email)
         .input('userId', sql.Int, userId)
-        .input('status', sql.VarChar(20), status);
+        .input('status', sql.VarChar(20), status)
+        .input('collegeAddress', sql.NVarChar(255), data.collegeAddress );
       const colOut = await insCol.query(`
-        INSERT INTO Colleges (CollegeName, Email, UserID, Status)
-        OUTPUT inserted.CollegeID, inserted.CollegeName, inserted.Email, inserted.UserID, inserted.Status, inserted.CreatedAt
-        VALUES (@collegeName, @email, @userId, @status)
+        INSERT INTO Colleges (CollegeName, Email, UserID, Status, CollegeAddress)
+        OUTPUT inserted.CollegeID, inserted.CollegeName, inserted.Email, inserted.UserID, inserted.Status, inserted.CreatedAt, inserted.CollegeAddress
+        VALUES (@collegeName, @email, @userId, @status, @collegeAddress)
       `);
       const crow = colOut.recordset[0];
-
-      await new sql.Request(transaction)
-        .input('collegeId', sql.Int, crow.CollegeID)
-        .input('collegeName', sql.NVarChar(100), data.collegeName)
-        .query(`
-          INSERT INTO dbo.CollegeProfiles (CollegeID, ShortName)
-          VALUES (@collegeId, @collegeName)
-        `);
-
       await transaction.commit();
 
       await addActivity(`Admin created college account: ${crow.CollegeName}`);

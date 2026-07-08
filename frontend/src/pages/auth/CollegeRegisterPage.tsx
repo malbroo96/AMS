@@ -9,6 +9,7 @@ import type { UserRole } from '../../types';
 
 interface CollegeRegisterForm {
   collegeName: string;
+  collegeAddress: string;
   name: string;
   email: string;
   mobile: string;
@@ -58,6 +59,16 @@ export function CollegeRegisterPage() {
             })}
             className={inputClass}
           />
+        </Field>
+        <Field label="Collage address" error={errors.collegeAddress?.message}>
+          <input
+          {...register('collegeAddress',{
+            required:'College address is required',
+            minLength:{value:10,message:'Min 10 characters'},
+          })} 
+            className={inputClass}
+            />
+          
         </Field>
 
         <Field label="Contact Person" error={errors.name?.message}>
