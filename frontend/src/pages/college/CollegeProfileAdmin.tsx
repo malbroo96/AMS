@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { publishCollegeNotification } from '../../context/CollegeNotificationsContext';
+import { useCollegeNotifications } from '../../context/CollegeNotificationsContext';
 import {
   createCollegeAchievement,
   createCollegeCourse,
@@ -93,6 +93,7 @@ const emptyGalleryImage = () => ({
 const CollegeProfileAdmin: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { refreshNotifications } = useCollegeNotifications();
   const [activeTab, setActiveTab] = useState('basic-info');
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -204,6 +205,7 @@ const CollegeProfileAdmin: React.FC = () => {
     try {
       await action();
       await loadProfile();
+      await refreshNotifications();
       showToast(successMessage, 'success');
     } catch (err: unknown) {
       const message =
@@ -240,12 +242,6 @@ const CollegeProfileAdmin: React.FC = () => {
       setCourseDraft(emptyCourse());
       getCoursesList().then((res) => setGlobalCourses(res.data.data || [])).catch(console.error);
       getBranchesList().then((res) => setGlobalBranches(res.data.data || [])).catch(console.error);
-      publishCollegeNotification({
-        type: 'Course',
-        title: courseDraft.id ? 'Course updated' : 'Course added',
-        description: `${courseDraft.courseName || 'Course'} catalog details were saved successfully.`,
-        priority: 'success',
-      });
     }, courseDraft.id ? 'Course updated' : 'Course added');
 
   const handleEditCourse = (course: Record<string, unknown>) => {

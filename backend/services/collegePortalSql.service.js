@@ -3,6 +3,7 @@ const { sql, getPool } = require('../config/database');
 const ApiError = require('../utils/ApiError');
 const CourseModel = require('../models/Course.model');
 const sharepointService = require('./sharepointService');
+const notificationServices = require('./notification.services');
 
 let tablesReady = false;
 const DEFAULT_PROFILE_COMPLETION = 15;
@@ -277,6 +278,17 @@ async function updateProfile(user, data) {
     await transaction.rollback();
     throw error;
   }
+
+  await notificationServices.notifyCollege({
+    collegeId,
+    type: 'Profile',
+    title: 'Profile updated',
+    description: 'Your college profile changes were saved successfully.',
+    priority: 'success',
+    referenceId: collegeId,
+    referenceType: 'college',
+  });
+
   return getProfile(collegeId);
 }
 
@@ -433,6 +445,15 @@ const collegePortalSqlService = {
     if (courseIdRaw) {
       const updated = await CourseModel.update(courseIdRaw, { courseName, branchName, duration, fees, seats, eligibility });
       if (!updated) throw new ApiError('Course not found', 404);
+      await notificationServices.notifyCollege({
+        collegeId,
+        type: 'Course',
+        title: 'Course updated',
+        description: `${courseName || updated.course_name || 'Course'} catalog details were saved successfully.`,
+        priority: 'success',
+        referenceId: updated.id,
+        referenceType: 'course',
+      });
       return mapCourse({
         CourseID: updated.id,
         RealCourseID: updated.RealCourseID,
@@ -447,6 +468,15 @@ const collegePortalSqlService = {
       });
     } else {
       const created = await CourseModel.create({ schoolId: collegeId, courseName, branchName, duration, fees, seats, eligibility });
+      await notificationServices.notifyCollege({
+        collegeId,
+        type: 'Course',
+        title: 'Course added',
+        description: `${courseName || 'Course'} catalog details were saved successfully.`,
+        priority: 'success',
+        referenceId: created.id,
+        referenceType: 'course',
+      });
       return mapCourse({
         CourseID: created.id,
         RealCourseID: created.RealCourseID,
@@ -470,6 +500,15 @@ const collegePortalSqlService = {
       throw new ApiError('Course not found', 404);
     }
     await CourseModel.delete(courseId);
+    await notificationServices.notifyCollege({
+      collegeId,
+      type: 'Course',
+      title: 'Course deleted',
+      description: `${course.course_name || 'A course'} was removed from your catalog.`,
+      priority: 'reminder',
+      referenceId: courseId,
+      referenceType: 'course',
+    });
     return { message: 'Course deleted successfully' };
   },
 

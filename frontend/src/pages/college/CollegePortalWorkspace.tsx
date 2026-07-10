@@ -16,7 +16,7 @@ import { updateApplicationStatus } from '../../api/applications';
 import { button, form, table } from '../../components/ui/designTokens';
 import { useToast } from '../../context/ToastContext';
 import { CollegeNotificationsPage, CollegeNotificationsPreview } from '../../components/layout/CollegeNotifications';
-import { publishCollegeNotification } from '../../context/CollegeNotificationsContext';
+import { useCollegeNotifications } from '../../context/CollegeNotificationsContext';
 import type { College } from '../../types';
 
 type DashboardData = {
@@ -339,6 +339,7 @@ const quickActions = [
 export function CollegePortalWorkspace() {
   const location = useLocation();
   const { showToast } = useToast();
+  const { refreshNotifications } = useCollegeNotifications();
   const [dashboard, setDashboard] = useState<DashboardData>({});
   const [profile, setProfile] = useState<CollegeProfileData | null>(null);
   const [assets, setAssets] = useState<CollegeAssets | null>(null);
@@ -363,7 +364,7 @@ export function CollegePortalWorkspace() {
     let active = true;
     setLoading(true);
 
-    Promise.all([getCollegeDashboard(), getCollegeProfile()])
+    Promise.all([getCollegeDashboard(), getCollegeProfile(), refreshNotifications()])
       .then(([dashboardRes, profileRes]) => {
         if (!active) return;
         setDashboard(dashboardRes.data.data);
@@ -377,7 +378,7 @@ export function CollegePortalWorkspace() {
     return () => {
       active = false;
     };
-  }, [showToast]);
+  }, [refreshNotifications, showToast]);
 
   useEffect(() => {
     const collegeId = dashboard.college?.id || profile?.id;
@@ -411,12 +412,7 @@ export function CollegePortalWorkspace() {
           : current.college,
       }));
       showToast('College profile updated successfully', 'success');
-      publishCollegeNotification({
-        type: 'Profile',
-        title: 'Profile updated',
-        description: 'Your college profile changes were saved successfully.',
-        priority: 'success',
-      });
+      await refreshNotifications();
     } catch {
       showToast('Unable to update college profile', 'error');
     } finally {
@@ -441,12 +437,7 @@ export function CollegePortalWorkspace() {
       if (type === 'banner') await uploadCollegeBanner(file);
       await refreshAssets();
       showToast(`${type === 'logo' ? 'Logo' : 'Banner'} uploaded successfully`, 'success');
-      publishCollegeNotification({
-        type: 'Profile',
-        title: `${type === 'logo' ? 'Logo' : 'Banner'} updated`,
-        description: `Your college ${type} asset is now updated on the portal.`,
-        priority: 'success',
-      });
+      await refreshNotifications();
     } catch {
       showToast(`Unable to upload ${type}`, 'error');
     } finally {
@@ -462,12 +453,7 @@ export function CollegePortalWorkspace() {
       await deleteCollegeLogo(collegeId);
       await refreshAssets();
       showToast('Logo removed successfully', 'success');
-      publishCollegeNotification({
-        type: 'Profile',
-        title: 'Logo removed',
-        description: 'Your college profile is missing a logo asset.',
-        priority: 'reminder',
-      });
+      await refreshNotifications();
     } catch {
       showToast('Unable to remove logo', 'error');
     } finally {
@@ -483,12 +469,7 @@ export function CollegePortalWorkspace() {
       const res = await getCollegeDashboard();
       setDashboard(res.data.data);
       showToast('Access request submitted', 'success');
-      publishCollegeNotification({
-        type: 'Application',
-        title: 'Application moved to review',
-        description: `${String(student.name || 'A student')} was moved to under review after access request.`,
-        priority: 'info',
-      });
+      await refreshNotifications();
     } catch {
       showToast('Unable to request access', 'error');
     }
@@ -785,22 +766,62 @@ function ApplicationsPage({ path, students, requestAccess }: Parameters<typeof r
 }
 
 function NoticesPage({ path }: Parameters<typeof renderPage>[0]) {
+  const { createNotification } = useCollegeNotifications();
+  const { showToast } = useToast();
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [publishing, setPublishing] = useState(false);
+
   if (path.endsWith('/create')) {
-    const publishNotice = () => {
-      publishCollegeNotification({
-        type: 'Notice',
-        title: 'Notice published',
-        description: 'Your admission notice was published for students.',
-        priority: 'success',
-      });
+    const publishNotice = async () => {
+      if (!title.trim()) {
+        showToast('Enter a notice title', 'error');
+        return;
+      }
+      setPublishing(true);
+      try {
+        await createNotification({
+          type: 'Notice',
+          title: 'Notice published',
+          description: title.trim()
+            ? `"${title.trim()}" is now available to students.`
+            : 'Your admission notice was published for students.',
+          priority: 'success',
+        });
+        setTitle('');
+        setBody('');
+        showToast('Notice published', 'success');
+      } catch {
+        showToast('Unable to publish notice', 'error');
+      } finally {
+        setPublishing(false);
+      }
     };
 
     return (
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="grid gap-4">
-          <input className={form.input} placeholder="Notice title" />
-          <textarea className={form.input} rows={6} placeholder="Notice body" />
-          <button type="button" onClick={publishNotice} className={`${button.primary} w-fit`}>Publish notice</button>
+          <input
+            className={form.input}
+            placeholder="Notice title"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+          <textarea
+            className={form.input}
+            rows={6}
+            placeholder="Notice body"
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => void publishNotice()}
+            disabled={publishing}
+            className={`${button.primary} w-fit`}
+          >
+            {publishing ? 'Publishing…' : 'Publish notice'}
+          </button>
         </div>
       </section>
     );

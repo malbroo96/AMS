@@ -1,6 +1,7 @@
 const { sql, getPool } = require('../config/database');
 const sharepointService = require('./sharepointService');
 const ApiError = require('../utils/ApiError');
+const notificationServices = require('./notification.services');
 
 function versionedAssetUrl(url, updatedAt) {
   if (!url || !updatedAt || !url.startsWith('/api/files/')) return url || null;
@@ -80,6 +81,17 @@ const collegeAssetService = {
       }
     }
 
+    const label = assetType === 'logo' ? 'Logo' : 'Banner';
+    await notificationServices.notifyCollege({
+      collegeId,
+      type: 'Profile',
+      title: `${label} updated`,
+      description: `Your college ${assetType} asset is now updated on the portal.`,
+      priority: 'success',
+      referenceId: collegeId,
+      referenceType: 'college',
+    });
+
     return { collegeId, url: proxyUrl, assetType };
   },
 
@@ -107,6 +119,18 @@ const collegeAssetService = {
       .request()
       .input('cid', sql.Int, collegeId)
       .query(`UPDATE dbo.CollegeProfiles SET ${column} = NULL, UpdatedAt = SYSUTCDATETIME() WHERE CollegeID = @cid`);
+
+    if (assetType === 'logo') {
+      await notificationServices.notifyCollege({
+        collegeId,
+        type: 'Profile',
+        title: 'Logo removed',
+        description: 'Your college profile is missing a logo asset.',
+        priority: 'reminder',
+        referenceId: collegeId,
+        referenceType: 'college',
+      });
+    }
 
     return { success: true };
   },

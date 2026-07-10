@@ -6,6 +6,7 @@ const SchoolModel = require('../models/School.model');
 const CourseModel = require('../models/Course.model');
 const { ApplicationStatus, hasProfileAccess } = require('../config/constants');
 const { getPool, sql } = require('../config/database');
+const notificationServices = require('./notification.services');
 
 const enrichApplication = (row, user, academics = null, documents = []) => {
   const mapped = {
@@ -104,6 +105,19 @@ const applicationService = {
     });
 
     const full = await ApplicationModel.findById(app.id);
+
+    if (full?.school_id) {
+      await notificationServices.notifyCollege({
+        collegeId: full.school_id,
+        type: 'Application',
+        title: 'New application submitted',
+        description: `${full.student_name || 'A student'} submitted an admission application${full.course_name ? ` for ${full.course_name}` : ''} for review.`,
+        priority: 'urgent',
+        referenceId: full.id,
+        referenceType: 'application',
+      });
+    }
+
     return enrichApplication(full, { id: userId, role: 'student' });
   },
 
@@ -173,6 +187,19 @@ const applicationService = {
     }
 
     const updated = await ApplicationModel.updateStatus(id, { status, remarks, changedByUserId: user.id });
+
+    if (updated?.school_id && status === 'under_review') {
+      await notificationServices.notifyCollege({
+        collegeId: updated.school_id,
+        type: 'Application',
+        title: 'Application moved to review',
+        description: `${updated.student_name || 'A student'} was moved to under review.`,
+        priority: 'info',
+        referenceId: updated.id,
+        referenceType: 'application',
+      });
+    }
+
     return enrichApplication(updated, user);
   },
 

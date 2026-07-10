@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { CollegeNotificationsRoute } from './components/layout/CollegeNotificationsRoute';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { LandingPage } from './pages/LandingPage';
 
@@ -51,8 +52,10 @@ function App() {
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={['college']} />}>
-                <Route path="/dashboard/college" element={<CollegePortalWorkspace />} />
-                <Route path="/dashboard/college/*" element={<CollegePortalWorkspace />} />
+                <Route element={<CollegeNotificationsRoute />}>
+                  <Route path="/dashboard/college" element={<CollegePortalWorkspace />} />
+                  <Route path="/dashboard/college/*" element={<CollegePortalWorkspace />} />
+                </Route>
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>

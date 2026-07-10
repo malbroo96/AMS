@@ -1,4 +1,14 @@
-require('dotenv').config();
+const path = require('path');
+
+require('dotenv').config({
+  path: path.join(__dirname, '../.env'),
+});
+// console.log({
+//   DB_SERVER: process.env.DB_SERVER,
+//   DB_INSTANCE: process.env.DB_INSTANCE,
+//   DB_NAME: process.env.DB_NAME,
+//   DB_TRUSTED_CONNECTION: process.env.DB_TRUSTED_CONNECTION,
+// });
 
 /** Parse Prisma-style DATABASE_URL into DB_* fields when individual vars are missing */
 function parseDatabaseUrl() {

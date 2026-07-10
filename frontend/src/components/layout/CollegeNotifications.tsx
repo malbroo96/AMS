@@ -35,7 +35,7 @@ export function CollegeNotificationItem({
   dense = false,
 }: {
   notification: CollegeNotification;
-  onMarkAsRead: (notificationId: string) => void;
+  onMarkAsRead: (notificationId: string) => void | Promise<void>;
   dense?: boolean;
 }) {
   return (

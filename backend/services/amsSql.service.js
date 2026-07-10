@@ -5,6 +5,7 @@ const UserModel = require('../models/User.model');
 const { mapAmsStudentRow, mapAmsCollegeRow } = require('../utils/mappers');
 const collegePortal = require('./collegePortalSql.service');
 const { ApplicationStatus, hasProfileAccess } = require('../config/constants');
+const notificationServices = require('./notification.services');
 
 function buildCollegeProfilePayload(college, stats = {}) {
   const logoUrl = college.logoUrl || null;
@@ -230,6 +231,16 @@ const amsSqlService = {
         INSERT INTO dbo.Applications (StudentID, CollegeCourseID, CurrentStatus)
         VALUES (@sid, @ccid, 'Interested')
       `);
+
+    await notificationServices.notifyCollege({
+      collegeId,
+      type: 'Interested Student',
+      title: 'New interested student',
+      description: `${studentRow.Name || 'A student'} shortlisted your college and may need follow-up.`,
+      priority: 'info',
+      referenceId: studentRow.StudentID,
+      referenceType: 'student',
+    });
 
     await addActivity(`${studentRow.Name || 'Student'} marked interest in ${collegeRow.CollegeName}`);
     return this.getStudentDashboard(user);
@@ -1009,7 +1020,26 @@ const amsSqlService = {
 
     await addActivity(`College updated: ${data.collegeName ?? row.CollegeName}`);
     const after = await pool.request().input('id', sql.Int, id).query('SELECT * FROM Colleges WHERE CollegeID = @id');
-    return mapAmsCollegeRow(after.recordset[0]);
+    const updated = mapAmsCollegeRow(after.recordset[0]);
+
+    const prevStatus = String(row.Status || '').toLowerCase();
+    const nextStatus = String(updated.status || '').toLowerCase();
+    if (prevStatus !== nextStatus && (nextStatus === 'approved' || nextStatus === 'rejected')) {
+      await notificationServices.notifyCollege({
+        collegeId: id,
+        type: 'Profile',
+        title: nextStatus === 'approved' ? 'Profile verification approved' : 'Profile verification rejected',
+        description:
+          nextStatus === 'approved'
+            ? 'Your public college profile is visible to students.'
+            : 'Your college profile was rejected. Please review and update your details.',
+        priority: nextStatus === 'approved' ? 'success' : 'urgent',
+        referenceId: id,
+        referenceType: 'college',
+      });
+    }
+
+    return updated;
   },
 
   async deleteCollege(idRaw) {

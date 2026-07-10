@@ -8,7 +8,10 @@ const path = require('path');
 const { getPool, closePool } = require('../config/database');
 
 async function run() {
-  const sqlPath = path.join(__dirname, 'migration_alter_schema.sql');
+  const migrationFile =
+  process.argv[2] || 'migration_alter_schema.sql';
+
+const sqlPath = path.join(__dirname, migrationFile);
   const script = fs.readFileSync(sqlPath, 'utf8');
   const batches = script.split(/^\s*GO\s*$/gim).filter((b) => b.trim());
 

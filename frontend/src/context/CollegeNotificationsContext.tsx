@@ -1,101 +1,30 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createNotification as createNotificationApi,
+  getNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+  type CollegeNotification,
+  type CollegeNotificationDraft,
+} from '../api/notifications';
 
-export type CollegeNotificationType =
-  | 'Application'
-  | 'Interested Student'
-  | 'Profile'
-  | 'Course'
-  | 'Notice'
-  | 'System';
-
-export type CollegeNotificationPriority = 'urgent' | 'reminder' | 'success' | 'info';
-
-export type CollegeNotification = {
-  id: string;
-  type: CollegeNotificationType;
-  title: string;
-  description: string;
-  createdAt: string;
-  priority: CollegeNotificationPriority;
-  read: boolean;
-};
-
-type CollegeNotificationDraft = Omit<CollegeNotification, 'id' | 'createdAt' | 'read'> & {
-  id?: string;
-  createdAt?: string;
-  read?: boolean;
-};
+export type {
+  CollegeNotification,
+  CollegeNotificationDraft,
+  CollegeNotificationPriority,
+  CollegeNotificationType,
+} from '../api/notifications';
 
 type CollegeNotificationsContextValue = {
   notifications: CollegeNotification[];
   unreadCount: number;
   latestNotifications: CollegeNotification[];
-  addNotification: (notification: CollegeNotificationDraft) => void;
-  markAsRead: (notificationId: string) => void;
-  markAllAsRead: () => void;
+  loading: boolean;
+  refreshNotifications: () => Promise<void>;
+  createNotification: (notification: CollegeNotificationDraft) => Promise<void>;
+  markAsRead: (notificationId: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
 };
-
-const STORAGE_KEY = 'ams-college-notifications';
-export const COLLEGE_NOTIFICATION_EVENT = 'ams:college-notification';
-
-const now = Date.now();
-
-const seedNotifications: CollegeNotification[] = [
-  {
-    id: 'seed-new-application',
-    type: 'Application',
-    title: 'New application submitted',
-    description: 'A student submitted an admission application for review.',
-    createdAt: new Date(now - 8 * 60 * 1000).toISOString(),
-    priority: 'urgent',
-    read: false,
-  },
-  {
-    id: 'seed-profile-approved',
-    type: 'Profile',
-    title: 'Profile verification approved',
-    description: 'Your public college profile is visible to students.',
-    createdAt: new Date(now - 38 * 60 * 1000).toISOString(),
-    priority: 'success',
-    read: false,
-  },
-  {
-    id: 'seed-interested-student',
-    type: 'Interested Student',
-    title: 'New interested student',
-    description: 'A student shortlisted your college and may need follow-up.',
-    createdAt: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-    priority: 'info',
-    read: false,
-  },
-  {
-    id: 'seed-course-reminder',
-    type: 'Course',
-    title: 'Course intake needs review',
-    description: 'Confirm course seats and fees before the next admission cycle.',
-    createdAt: new Date(now - 7 * 60 * 60 * 1000).toISOString(),
-    priority: 'reminder',
-    read: true,
-  },
-  {
-    id: 'seed-notice-published',
-    type: 'Notice',
-    title: 'Notice published successfully',
-    description: 'Your latest admission notice is now available to students.',
-    createdAt: new Date(now - 24 * 60 * 60 * 1000).toISOString(),
-    priority: 'success',
-    read: true,
-  },
-  {
-    id: 'seed-system-window',
-    type: 'System',
-    title: 'Maintenance window scheduled',
-    description: 'Portal services may be slower during scheduled maintenance.',
-    createdAt: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    priority: 'info',
-    read: true,
-  },
-];
 
 const CollegeNotificationsContext = createContext<CollegeNotificationsContextValue | null>(null);
 
@@ -103,70 +32,74 @@ function sortNotifications(notifications: CollegeNotification[]) {
   return [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-function readStoredNotifications() {
-  try {
-    const value = window.localStorage.getItem(STORAGE_KEY);
-    if (!value) return seedNotifications;
-    const parsed = JSON.parse(value) as CollegeNotification[];
-    return Array.isArray(parsed) && parsed.length ? parsed : seedNotifications;
-  } catch {
-    return seedNotifications;
-  }
-}
-
-function buildNotification(notification: CollegeNotificationDraft): CollegeNotification {
-  return {
-    ...notification,
-    id: notification.id ?? `college-notification-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    createdAt: notification.createdAt ?? new Date().toISOString(),
-    read: notification.read ?? false,
-  };
-}
-
 export function CollegeNotificationsProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState<CollegeNotification[]>(() => sortNotifications(readStoredNotifications()));
+  const [notifications, setNotifications] = useState<CollegeNotification[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
-  }, [notifications]);
-
-  const addNotification = useCallback((notification: CollegeNotificationDraft) => {
-    const nextNotification = buildNotification(notification);
-    setNotifications((current) => sortNotifications([nextNotification, ...current.filter((item) => item.id !== nextNotification.id)]));
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const { data } = await getNotifications();
+      setNotifications(sortNotifications(data.data || []));
+    } catch (error) {
+      console.error('Failed to load notifications', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    const handleNotification = (event: Event) => {
-      const notification = (event as CustomEvent<CollegeNotificationDraft>).detail;
-      if (notification?.title) addNotification(notification);
-    };
+    void refreshNotifications();
+  }, [refreshNotifications]);
 
-    window.addEventListener(COLLEGE_NOTIFICATION_EVENT, handleNotification);
-    return () => window.removeEventListener(COLLEGE_NOTIFICATION_EVENT, handleNotification);
-  }, [addNotification]);
+  const createNotification = useCallback(
+    async (notification: CollegeNotificationDraft) => {
+      await createNotificationApi(notification);
+      await refreshNotifications();
+    },
+    [refreshNotifications]
+  );
 
-  const markAsRead = useCallback((notificationId: string) => {
-    setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === notificationId ? { ...notification, read: true } : notification
-      )
-    );
-  }, []);
+  const markAsRead = useCallback(
+    async (notificationId: string) => {
+      setNotifications((current) =>
+        current.map((notification) =>
+          notification.id === notificationId ? { ...notification, read: true } : notification
+        )
+      );
+      try {
+        await markNotificationAsRead(notificationId);
+        await refreshNotifications();
+      } catch (error) {
+        console.error('Failed to mark notification as read', error);
+        await refreshNotifications();
+      }
+    },
+    [refreshNotifications]
+  );
 
-  const markAllAsRead = useCallback(() => {
+  const markAllAsRead = useCallback(async () => {
     setNotifications((current) => current.map((notification) => ({ ...notification, read: true })));
-  }, []);
+    try {
+      await markAllNotificationsAsRead();
+      await refreshNotifications();
+    } catch (error) {
+      console.error('Failed to mark all notifications as read', error);
+      await refreshNotifications();
+    }
+  }, [refreshNotifications]);
 
   const value = useMemo(
     () => ({
       notifications,
       unreadCount: notifications.filter((notification) => !notification.read).length,
       latestNotifications: notifications.slice(0, 10),
-      addNotification,
+      loading,
+      refreshNotifications,
+      createNotification,
       markAsRead,
       markAllAsRead,
     }),
-    [addNotification, markAllAsRead, markAsRead, notifications]
+    [createNotification, loading, markAllAsRead, markAsRead, notifications, refreshNotifications]
   );
 
   return (
@@ -186,8 +119,4 @@ export function useCollegeNotifications() {
 
 export function useOptionalCollegeNotifications() {
   return useContext(CollegeNotificationsContext);
-}
-
-export function publishCollegeNotification(notification: CollegeNotificationDraft) {
-  window.dispatchEvent(new CustomEvent(COLLEGE_NOTIFICATION_EVENT, { detail: notification }));
 }
