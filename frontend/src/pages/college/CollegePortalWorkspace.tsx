@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import {
+  createCollegeCourse,
+  createCollegeGalleryImage,
+  createCollegeNotice,
+  deleteCollegeCourse,
+  deleteCollegeGalleryImage,
   deleteCollegeLogo,
+  deleteCollegeNotice,
   getCollegeAssets,
   getCollegeDashboard,
   getCollegeProfile,
+  listCollegeNotices,
+  updateCollegeNotice,
   updateCollegeProfile,
   uploadCollegeBanner,
   uploadCollegeLogo,
@@ -18,6 +29,26 @@ import { useToast } from '../../context/ToastContext';
 import { CollegeNotificationsPage, CollegeNotificationsPreview } from '../../components/layout/CollegeNotifications';
 import { useCollegeNotifications } from '../../context/CollegeNotificationsContext';
 import type { College } from '../../types';
+
+const FACILITY_OPTIONS = [
+  'Hostel',
+  'Library',
+  'WiFi',
+  'Smart Classroom',
+  'Computer Lab',
+  'Sports',
+  'Gym',
+  'Cafeteria',
+  'Transport',
+  'Auditorium',
+  'Medical Facility',
+  'Placement Cell',
+  'Research Center',
+  'Parking',
+  'ATM',
+  'Bank',
+  'Others',
+];
 
 type DashboardData = {
   college?: College;
@@ -87,8 +118,8 @@ const pageConfigs: Record<string, PageConfig> = {
     description: 'Keep location and postal information accurate.',
     responsibility: 'Edit city, state, country, pincode, and full campus address.',
   },
-  '/dashboard/college/profile/assets': {
-    title: 'Assets',
+  '/dashboard/college/profile/branding': {
+    title: 'Branding',
     eyebrow: 'College Profile',
     description: 'Manage brand visuals used on the public college profile.',
     responsibility: 'Upload or replace logo and banner assets only.',
@@ -97,31 +128,55 @@ const pageConfigs: Record<string, PageConfig> = {
     title: 'Facilities',
     eyebrow: 'College Profile',
     description: 'Showcase campus capabilities for students.',
-    responsibility: 'Review facilities as profile attributes, separate from admission rules.',
+    responsibility: 'Select and save facilities from the database-backed catalog.',
   },
-  '/dashboard/college/profile/admission': {
-    title: 'Admission Information',
+  '/dashboard/college/profile/accreditations': {
+    title: 'Accreditations',
     eyebrow: 'College Profile',
-    description: 'Present admission-facing profile notes and course context.',
-    responsibility: 'Maintain admission summary content without application processing.',
+    description: 'Maintain accreditation records that drive the college rating.',
+    responsibility: 'Edit accreditation grades and certificates; rating recalculates automatically.',
   },
   '/dashboard/college/profile/documents': {
     title: 'Documents',
     eyebrow: 'College Profile',
     description: 'Organize profile documents and prospectus references.',
-    responsibility: 'Manage college-level documents, not student application documents.',
+    responsibility: 'Manage college-level documents stored in SQL Server.',
+  },
+  '/dashboard/college/profile/gallery': {
+    title: 'Gallery',
+    eyebrow: 'College Profile',
+    description: 'Manage campus images shown on the public profile.',
+    responsibility: 'Add or remove gallery images from the database.',
+  },
+  '/dashboard/college/profile/placements': {
+    title: 'Placements',
+    eyebrow: 'College Profile',
+    description: 'Publish placement statistics and top recruiters.',
+    responsibility: 'Edit placement metrics stored in CollegePlacements.',
+  },
+  '/dashboard/college/profile/social': {
+    title: 'Social Media',
+    eyebrow: 'College Profile',
+    description: 'Keep social profile links up to date.',
+    responsibility: 'Edit Facebook, Instagram, LinkedIn, Twitter/X, and YouTube URLs.',
   },
   '/dashboard/college/courses': {
     title: 'Course Management',
     eyebrow: 'Courses',
-    description: 'Review active courses connected to this college.',
+    description: 'Review, edit, and delete courses connected to this college.',
     responsibility: 'Maintain course records as a catalog workflow.',
   },
-  '/dashboard/college/courses/departments': {
-    title: 'Departments',
+  '/dashboard/college/courses/add': {
+    title: 'Add Course',
     eyebrow: 'Courses',
-    description: 'Group academic offerings by department or branch.',
-    responsibility: 'Organize departments separately from fees and seats.',
+    description: 'Create a new course offering with fees.',
+    responsibility: 'Insert CollegeCourses and CollegeFees rows via API.',
+  },
+  '/dashboard/college/courses/fees': {
+    title: 'Manage Fees',
+    eyebrow: 'Courses',
+    description: 'Review fee structure for every course.',
+    responsibility: 'Display tuition, hostel, transport, exam, and total fees from SQL.',
   },
   '/dashboard/college/courses/intake-fees': {
     title: 'Intake & Fees',
@@ -396,6 +451,12 @@ export function CollegePortalWorkspace() {
     setAssets(res.data.data);
   };
 
+  const reloadProfile = async () => {
+    const res = await getCollegeProfile();
+    setProfile(res.data.data);
+    return res.data.data;
+  };
+
   const saveProfile = async (data: Partial<CollegeProfileData>) => {
     setSaving(true);
     try {
@@ -509,6 +570,7 @@ export function CollegePortalWorkspace() {
             uploading,
             setQuery,
             saveProfile,
+            reloadProfile,
             uploadAsset,
             deleteLogo,
             requestAccess,
@@ -532,6 +594,7 @@ function renderPage(ctx: {
   uploading: 'logo' | 'banner' | null;
   setQuery: (value: string) => void;
   saveProfile: (data: Partial<CollegeProfileData>) => Promise<void>;
+  reloadProfile: () => Promise<CollegeProfileData>;
   uploadAsset: (type: 'logo' | 'banner', file?: File) => Promise<void>;
   deleteLogo: () => Promise<void>;
   requestAccess: (student: Record<string, unknown>) => Promise<void>;
@@ -616,6 +679,7 @@ function ProfilePage({
   saving,
   uploading,
   saveProfile,
+  reloadProfile,
   uploadAsset,
   deleteLogo,
 }: Parameters<typeof renderPage>[0]) {
@@ -626,12 +690,24 @@ function ProfilePage({
       <SimpleForm
         saving={saving}
         fields={[
-          { label: 'Email Address', value: profile.email || profile.contact?.emailAddress || '', key: 'email' },
-          { label: 'Admission Mobile Number', value: profile.contact?.admissionMobileNumber || '', key: 'admissionMobileNumber' },
-          { label: 'Office Mobile Number', value: profile.contact?.officeMobileNumber || '', key: 'officeMobileNumber' },
+          { label: 'Principal Name', value: profile.contacts?.principalName || profile.contact?.principalName || '', key: 'principalName' },
+          { label: 'Admission Officer', value: profile.contacts?.admissionOfficer || profile.contact?.admissionOfficer || '', key: 'admissionOfficer' },
+          { label: 'Admission Email', value: profile.contacts?.admissionEmail || profile.contact?.admissionEmail || profile.email || '', key: 'admissionEmail' },
+          { label: 'Admission Phone', value: profile.contacts?.admissionPhone || profile.contact?.admissionPhone || profile.contact?.admissionMobileNumber || '', key: 'admissionPhone' },
+          { label: 'WhatsApp Number', value: profile.contacts?.whatsAppNumber || profile.contact?.whatsAppNumber || '', key: 'whatsAppNumber' },
           { label: 'Website URL', value: profile.contact?.websiteUrl || '', key: 'websiteUrl' },
         ]}
-        onSave={(values) => saveProfile({ email: values.email, contact: values })}
+        onSave={(values) =>
+          saveProfile({
+            contact: {
+              ...values,
+              admissionMobileNumber: values.admissionPhone,
+              emailAddress: values.admissionEmail,
+              websiteUrl: values.websiteUrl,
+            },
+            contacts: values,
+          })
+        }
       />
     );
   }
@@ -641,61 +717,134 @@ function ProfilePage({
       <SimpleForm
         saving={saving}
         fields={[
-          { label: 'Country', value: profile.location?.country || 'India', key: 'country' },
+          { label: 'Country', value: profile.location?.country || '', key: 'country' },
           { label: 'State', value: profile.location?.state || '', key: 'state' },
+          { label: 'District', value: profile.location?.district || '', key: 'district' },
           { label: 'City', value: profile.location?.city || '', key: 'city' },
           { label: 'Pincode', value: profile.location?.pincode || '', key: 'pincode' },
-          { label: 'Full Address', value: profile.location?.fullAddress || '', key: 'fullAddress', textarea: true },
+          { label: 'Google Map URL', value: profile.location?.googleMapUrl || profile.location?.googleMapsUrl || '', key: 'googleMapUrl' },
+          { label: 'Full Address', value: profile.location?.fullAddress || profile.location?.address || '', key: 'fullAddress', textarea: true },
         ]}
         onSave={(values) => saveProfile({ location: values })}
       />
     );
   }
 
-  if (path.endsWith('/assets')) {
+  if (path.endsWith('/branding') || path.endsWith('/assets')) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
         <AssetPanel
           title="Logo"
-          imageUrl={assets?.logoUrl}
+          imageUrl={assets?.logoUrl || profile.logoUrl}
           uploading={uploading === 'logo'}
           onUpload={(file) => uploadAsset('logo', file)}
-          onDelete={assets?.logoUrl ? deleteLogo : undefined}
+          onDelete={assets?.logoUrl || profile.logoUrl ? deleteLogo : undefined}
         />
         <AssetPanel
           title="Banner"
-          imageUrl={assets?.bannerUrl}
+          imageUrl={assets?.bannerUrl || profile.coverBannerUrl || profile.bannerUrl}
           uploading={uploading === 'banner'}
           onUpload={(file) => uploadAsset('banner', file)}
         />
+        {profile.rating != null && (
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:col-span-2">
+            <p className="text-xs font-semibold uppercase text-slate-500">Calculated rating (from accreditations)</p>
+            <p className="mt-1 text-2xl font-bold text-slate-950">{Number(profile.rating).toFixed(2)} / 5</p>
+          </div>
+        )}
       </div>
     );
   }
 
   if (path.endsWith('/facilities')) {
-    return <ListPanel items={profile.facilities || []} empty="No facilities are recorded yet." />;
+    return <FacilitiesEditor profile={profile} saving={saving} saveProfile={saveProfile} />;
   }
 
-  if (path.endsWith('/admission')) {
-    return (
-      <SimpleForm
-        saving={saving}
-        fields={[
-          { label: 'Summary Description', value: profile.about?.summaryDescription || '', key: 'summaryDescription', textarea: true },
-          { label: 'Vision Statement', value: profile.about?.visionStatement || '', key: 'visionStatement', textarea: true },
-          { label: 'Mission Statement', value: profile.about?.missionStatement || '', key: 'missionStatement', textarea: true },
-        ]}
-        onSave={(values) => saveProfile({ about: values })}
-      />
-    );
+  if (path.endsWith('/accreditations')) {
+    return <AccreditationsEditor profile={profile} saving={saving} saveProfile={saveProfile} />;
   }
 
   if (path.endsWith('/documents')) {
     return (
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="font-bold text-slate-950">College Documents</h2>
-        <p className="mt-2 text-sm text-slate-600">Prospectus: {profile.prospectusUrl || 'Not uploaded'}</p>
+        <ul className="mt-3 space-y-2 text-sm text-slate-700">
+          {(profile.documents || []).length === 0 && <li className="text-slate-500">No documents uploaded yet.</li>}
+          {(profile.documents || []).map((doc) => (
+            <li key={String(doc.id || doc.fileUrl)} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2">
+              <span>
+                <span className="font-medium">{String(doc.documentType || 'Document')}</span>
+                {doc.documentName ? ` — ${String(doc.documentName)}` : ''}
+              </span>
+              {doc.fileUrl ? (
+                <a href={String(doc.fileUrl)} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                  Open
+                </a>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+        {profile.prospectusUrl && (
+          <p className="mt-4 text-sm text-slate-600">
+            Prospectus:{' '}
+            <a href={profile.prospectusUrl} className="text-blue-600 hover:underline" target="_blank" rel="noreferrer">
+              View
+            </a>
+          </p>
+        )}
       </section>
+    );
+  }
+
+  if (path.endsWith('/gallery')) {
+    return <GalleryEditor profile={profile} onChanged={reloadProfile} />;
+  }
+
+  if (path.endsWith('/placements')) {
+    const recruiters = (profile.placements?.topRecruiters || [])
+      .map((r) => (typeof r === 'string' ? r : r.recruiterName || ''))
+      .filter(Boolean)
+      .join(', ');
+    return (
+      <SimpleForm
+        saving={saving}
+        fields={[
+          { label: 'Highest Package', value: profile.placements?.highestPackage || '', key: 'highestPackage' },
+          { label: 'Average Package', value: profile.placements?.averagePackage || '', key: 'averagePackage' },
+          { label: 'Placement Percentage', value: String(profile.placements?.placementPercentage ?? ''), key: 'placementPercentage' },
+          { label: 'Top Recruiters (comma separated)', value: recruiters, key: 'topRecruiters', textarea: true },
+        ]}
+        onSave={(values) =>
+          saveProfile({
+            placements: {
+              highestPackage: values.highestPackage,
+              averagePackage: values.averagePackage,
+              placementPercentage: Number(values.placementPercentage) || null,
+              topRecruiters: values.topRecruiters
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean),
+            },
+          })
+        }
+      />
+    );
+  }
+
+  if (path.endsWith('/social')) {
+    const social = profile.socialLinks || {};
+    return (
+      <SimpleForm
+        saving={saving}
+        fields={[
+          { label: 'Facebook', value: social.facebook || '', key: 'facebook' },
+          { label: 'Instagram', value: social.instagram || '', key: 'instagram' },
+          { label: 'LinkedIn', value: social.linkedin || '', key: 'linkedin' },
+          { label: 'Twitter / X', value: social.twitter || '', key: 'twitter' },
+          { label: 'YouTube', value: social.youtube || '', key: 'youtube' },
+        ]}
+        onSave={(values) => saveProfile({ socialLinks: values })}
+      />
     );
   }
 
@@ -708,26 +857,431 @@ function ProfilePage({
         { label: 'College Type', value: profile.collegeType || '', key: 'collegeType' },
         { label: 'Establishment Year', value: String(profile.establishmentYear || ''), key: 'establishmentYear' },
         { label: 'University Affiliation', value: profile.universityAffiliation || '', key: 'universityAffiliation' },
-        { label: 'NAAC Grade', value: profile.naacGrade || '', key: 'naacGrade' },
+        { label: 'Description', value: profile.about?.summaryDescription || '', key: 'summaryDescription', textarea: true },
+        { label: 'Vision', value: profile.about?.vision || profile.about?.visionStatement || '', key: 'vision', textarea: true },
+        { label: 'Mission', value: profile.about?.mission || profile.about?.missionStatement || '', key: 'mission', textarea: true },
       ]}
-      onSave={(values) => saveProfile({ ...values, establishmentYear: Number(values.establishmentYear) || null })}
+      onSave={(values) =>
+        saveProfile({
+          collegeName: values.collegeName,
+          shortName: values.shortName,
+          collegeType: values.collegeType,
+          universityAffiliation: values.universityAffiliation,
+          establishmentYear: Number(values.establishmentYear) || null,
+          about: {
+            summaryDescription: values.summaryDescription,
+            vision: values.vision,
+            visionStatement: values.vision,
+            mission: values.mission,
+            missionStatement: values.mission,
+          },
+        })
+      }
     />
   );
 }
 
-function CoursesPage({ path, profile }: Parameters<typeof renderPage>[0]) {
-  const courses = profile?.courses || [];
-  const focus = path.endsWith('/departments')
-    ? ['Course', 'Department']
-    : path.endsWith('/intake-fees')
-      ? ['Course', 'Seats', 'Annual Fee']
-      : path.endsWith('/eligibility')
-        ? ['Course', 'Eligibility']
-        : path.endsWith('/seats')
-          ? ['Course', 'Seat Availability']
-          : ['Course', 'Branch', 'Duration', 'Status'];
+function FacilitiesEditor({
+  profile,
+  saving,
+  saveProfile,
+}: {
+  profile: CollegeProfileData;
+  saving: boolean;
+  saveProfile: (data: Partial<CollegeProfileData>) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState<string[]>(profile.facilities || []);
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {FACILITY_OPTIONS.map((facility) => {
+          const checked = selected.includes(facility);
+          return (
+            <label key={facility} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm ${checked ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => setSelected((prev) => (checked ? prev.filter((f) => f !== facility) : [...prev, facility]))}
+              />
+              {facility}
+            </label>
+          );
+        })}
+      </div>
+      <button type="button" disabled={saving} className={`${button.primary} mt-4`} onClick={() => void saveProfile({ facilities: selected })}>
+        {saving ? 'Saving…' : 'Save facilities'}
+      </button>
+    </section>
+  );
+}
 
-  return <CourseTable courses={courses} columns={focus} />;
+function AccreditationsEditor({
+  profile,
+  saving,
+  saveProfile,
+}: {
+  profile: CollegeProfileData;
+  saving: boolean;
+  saveProfile: (data: Partial<CollegeProfileData>) => Promise<void>;
+}) {
+  const initial =
+    (profile.accreditations || []).map((a) => ({
+      accreditationName: String(a.accreditationName || ''),
+      gradeOrScore: String(a.gradeOrScore || ''),
+      certificateNumber: String(a.certificateNumber || ''),
+      validTill: a.validTill ? String(a.validTill).slice(0, 10) : '',
+      certificateUrl: a.certificateUrl ? String(a.certificateUrl) : '',
+    })) || [];
+  const [rows, setRows] = useState(
+    initial.length
+      ? initial
+      : [{ accreditationName: 'NAAC', gradeOrScore: '', certificateNumber: '', validTill: '', certificateUrl: '' }]
+  );
+  return (
+    <section className="space-y-4">
+      {rows.map((row, index) => (
+        <div key={index} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(['accreditationName', 'gradeOrScore', 'certificateNumber', 'validTill'] as const).map((key) => (
+              <label key={key} className="block space-y-1">
+                <span className={form.label}>{key}</span>
+                <input
+                  type={key === 'validTill' ? 'date' : 'text'}
+                  className={form.input}
+                  value={row[key]}
+                  onChange={(e) => {
+                    const next = [...rows];
+                    next[index] = { ...row, [key]: e.target.value };
+                    setRows(next);
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+          <button type="button" className="mt-2 text-xs text-red-600" onClick={() => setRows(rows.filter((_, i) => i !== index))}>
+            Remove
+          </button>
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <button type="button" className={button.secondary} onClick={() => setRows([...rows, { accreditationName: '', gradeOrScore: '', certificateNumber: '', validTill: '', certificateUrl: '' }])}>
+          Add accreditation
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          className={button.primary}
+          onClick={() => void saveProfile({ accreditations: rows.filter((r) => r.accreditationName.trim()) })}
+        >
+          {saving ? 'Saving…' : 'Save accreditations'}
+        </button>
+      </div>
+      {profile.rating != null && (
+        <p className="text-sm text-slate-600">
+          Current calculated rating: <strong>{Number(profile.rating).toFixed(2)}</strong> / 5
+        </p>
+      )}
+    </section>
+  );
+}
+
+function GalleryEditor({
+  profile,
+  onChanged,
+}: {
+  profile: CollegeProfileData;
+  onChanged: () => Promise<void>;
+}) {
+  const { showToast } = useToast();
+  const [busy, setBusy] = useState(false);
+  const [gallery, setGallery] = useState(profile.gallery || []);
+
+  useEffect(() => {
+    setGallery(profile.gallery || []);
+  }, [profile.gallery]);
+
+  const upload = async (file?: File) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      await createCollegeGalleryImage({ imageTitle: file.name }, file);
+      const res = await getCollegeProfile();
+      setGallery(res.data.data.gallery || []);
+      await onChanged();
+      showToast('Gallery image uploaded', 'success');
+    } catch {
+      showToast('Unable to upload gallery image', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    setBusy(true);
+    try {
+      await deleteCollegeGalleryImage(id);
+      const res = await getCollegeProfile();
+      setGallery(res.data.data.gallery || []);
+      await onChanged();
+      showToast('Gallery image removed', 'success');
+    } catch {
+      showToast('Unable to remove gallery image', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="space-y-4">
+      <input type="file" accept="image/*" disabled={busy} onChange={(e) => void upload(e.target.files?.[0])} />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {gallery.map((image) => (
+          <div key={String(image.id)} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <img src={String(image.imageUrl)} alt={String(image.imageTitle || 'Campus')} className="h-40 w-full object-cover" />
+            <div className="flex items-center justify-between p-2 text-sm">
+              <span className="truncate text-slate-700">{String(image.imageTitle || 'Image')}</span>
+              <button type="button" className="text-red-600" onClick={() => void remove(String(image.id))}>
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {!gallery.length && <EmptyState title="No gallery images yet" />}
+    </section>
+  );
+}
+
+function CoursesPage({ path, profile }: Parameters<typeof renderPage>[0]) {
+  const { showToast } = useToast();
+  const [courses, setCourses] = useState(profile?.courses || []);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState({
+    courseName: '',
+    degree: '',
+    branchName: '',
+    duration: '4',
+    intake: '',
+    availableSeats: '',
+    eligibility: '',
+    description: '',
+    tuitionFee: '',
+    hostelFee: '',
+    transportFee: '',
+    examFee: '',
+    miscellaneousFee: '',
+    scholarshipInfo: '',
+  });
+
+  useEffect(() => {
+    setCourses(profile?.courses || []);
+  }, [profile?.courses]);
+
+  const refresh = async () => {
+    const res = await getCollegeProfile();
+    setCourses(res.data.data.courses || []);
+  };
+
+  const saveCourse = async () => {
+    if (!draft.courseName.trim()) {
+      showToast('Course name is required', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      await createCollegeCourse({
+        courseName: draft.courseName,
+        degree: draft.degree,
+        branchName: draft.branchName,
+        duration: Number(draft.duration) || 4,
+        intake: Number(draft.intake) || null,
+        availableSeats: Number(draft.availableSeats) || null,
+        totalSeats: Number(draft.intake) || Number(draft.availableSeats) || null,
+        eligibility: draft.eligibility,
+        description: draft.description,
+        fees: {
+          tuitionFee: Number(draft.tuitionFee) || null,
+          hostelFee: Number(draft.hostelFee) || null,
+          transportFee: Number(draft.transportFee) || null,
+          examFee: Number(draft.examFee) || null,
+          miscellaneousFee: Number(draft.miscellaneousFee) || null,
+          scholarshipInfo: draft.scholarshipInfo,
+        },
+      });
+      await refresh();
+      showToast('Course created', 'success');
+      setDraft({
+        courseName: '',
+        degree: '',
+        branchName: '',
+        duration: '4',
+        intake: '',
+        availableSeats: '',
+        eligibility: '',
+        description: '',
+        tuitionFee: '',
+        hostelFee: '',
+        transportFee: '',
+        examFee: '',
+        miscellaneousFee: '',
+        scholarshipInfo: '',
+      });
+    } catch {
+      showToast('Unable to create course', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeCourse = async (id: string) => {
+    try {
+      await deleteCollegeCourse(id);
+      await refresh();
+      showToast('Course deleted', 'success');
+    } catch {
+      showToast('Unable to delete course', 'error');
+    }
+  };
+
+  if (path.endsWith('/add')) {
+    return (
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {Object.entries(draft).map(([key, value]) => (
+            <label key={key} className="block space-y-1">
+              <span className={form.label}>{key}</span>
+              <input className={form.input} value={value} onChange={(e) => setDraft({ ...draft, [key]: e.target.value })} />
+            </label>
+          ))}
+        </div>
+        <button type="button" disabled={saving} className={`${button.primary} mt-4`} onClick={() => void saveCourse()}>
+          {saving ? 'Saving…' : 'Add course'}
+        </button>
+      </section>
+    );
+  }
+
+  const focus = path.endsWith('/fees') || path.endsWith('/intake-fees')
+    ? ['Course', 'Seats', 'Annual Fee', 'Total Fee']
+    : path.endsWith('/eligibility')
+      ? ['Course', 'Eligibility']
+      : path.endsWith('/seats')
+        ? ['Course', 'Seat Availability']
+        : ['Course', 'Branch', 'Degree', 'Duration', 'Actions'];
+
+  return (
+    <div className="space-y-3">
+      <CourseTable courses={courses} columns={focus} onDelete={removeCourse} />
+    </div>
+  );
+}
+
+function NoticesPage({ path }: Parameters<typeof renderPage>[0]) {
+  const { showToast } = useToast();
+  const { refreshNotifications } = useCollegeNotifications();
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [notices, setNotices] = useState<Array<Record<string, unknown>>>([]);
+
+  const load = async () => {
+    try {
+      const res = await listCollegeNotices();
+      setNotices(res.data.data || []);
+    } catch {
+      showToast('Unable to load notices', 'error');
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  if (path.endsWith('/create')) {
+    const publishNotice = async () => {
+      if (!title.trim()) {
+        showToast('Enter a notice title', 'error');
+        return;
+      }
+      setPublishing(true);
+      try {
+        await createCollegeNotice({ title: title.trim(), body, status: 'published' });
+        setTitle('');
+        setBody('');
+        showToast('Notice published', 'success');
+        await refreshNotifications();
+        await load();
+      } catch {
+        showToast('Unable to publish notice', 'error');
+      } finally {
+        setPublishing(false);
+      }
+    };
+
+    return (
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid gap-4">
+          <input className={form.input} placeholder="Notice title" value={title} onChange={(event) => setTitle(event.target.value)} />
+          <textarea className={form.input} rows={6} placeholder="Notice body" value={body} onChange={(event) => setBody(event.target.value)} />
+          <button type="button" onClick={() => void publishNotice()} disabled={publishing} className={`${button.primary} w-fit`}>
+            {publishing ? 'Publishing…' : 'Publish notice'}
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const filtered = path.endsWith('/drafts')
+    ? notices.filter((n) => String(n.status).toLowerCase() === 'draft')
+    : path.endsWith('/published')
+      ? notices.filter((n) => String(n.status).toLowerCase() === 'published')
+      : notices;
+
+  if (!filtered.length) return <EmptyState title="No notices to show" />;
+
+  return (
+    <div className="space-y-3">
+      {filtered.map((notice) => (
+        <article key={String(notice.id)} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-slate-950">{String(notice.title)}</h3>
+              <p className="mt-1 text-sm text-slate-600">{String(notice.body || '')}</p>
+              <p className="mt-2 text-xs uppercase text-slate-400">{String(notice.status)}</p>
+            </div>
+            <div className="flex gap-2">
+              {String(notice.status) !== 'published' && (
+                <button
+                  type="button"
+                  className="text-xs text-blue-600"
+                  onClick={() =>
+                    void updateCollegeNotice(String(notice.id), { ...notice, status: 'published' }).then(async () => {
+                      await refreshNotifications();
+                      await load();
+                    })
+                  }
+                >
+                  Publish
+                </button>
+              )}
+              <button
+                type="button"
+                className="text-xs text-red-600"
+                onClick={() =>
+                  void deleteCollegeNotice(String(notice.id)).then(async () => {
+                    await load();
+                    showToast('Notice deleted', 'success');
+                  })
+                }
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
 }
 
 function StudentsPage({ path, students, query, setQuery }: Parameters<typeof renderPage>[0]) {
@@ -742,7 +1296,7 @@ function StudentsPage({ path, students, query, setQuery }: Parameters<typeof ren
 
   if (path.endsWith('/profile')) return <StudentProfilePreview students={students} />;
   if (path.endsWith('/contact')) return <ContactQueue students={students} />;
-  if (path.endsWith('/export')) return <ExportPanel label="Interested students" count={students.length} />;
+  if (path.endsWith('/export')) return <ExportPanel label="Interested students" rows={students} />;
   return <StudentTable students={students} showActions={false} />;
 }
 
@@ -765,72 +1319,8 @@ function ApplicationsPage({ path, students, requestAccess }: Parameters<typeof r
   return <StudentTable students={rows} showActions onRequestAccess={requestAccess} />;
 }
 
-function NoticesPage({ path }: Parameters<typeof renderPage>[0]) {
-  const { createNotification } = useCollegeNotifications();
-  const { showToast } = useToast();
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [publishing, setPublishing] = useState(false);
-
-  if (path.endsWith('/create')) {
-    const publishNotice = async () => {
-      if (!title.trim()) {
-        showToast('Enter a notice title', 'error');
-        return;
-      }
-      setPublishing(true);
-      try {
-        await createNotification({
-          type: 'Notice',
-          title: 'Notice published',
-          description: title.trim()
-            ? `"${title.trim()}" is now available to students.`
-            : 'Your admission notice was published for students.',
-          priority: 'success',
-        });
-        setTitle('');
-        setBody('');
-        showToast('Notice published', 'success');
-      } catch {
-        showToast('Unable to publish notice', 'error');
-      } finally {
-        setPublishing(false);
-      }
-    };
-
-    return (
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-4">
-          <input
-            className={form.input}
-            placeholder="Notice title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-          />
-          <textarea
-            className={form.input}
-            rows={6}
-            placeholder="Notice body"
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-          />
-          <button
-            type="button"
-            onClick={() => void publishNotice()}
-            disabled={publishing}
-            className={`${button.primary} w-fit`}
-          >
-            {publishing ? 'Publishing…' : 'Publish notice'}
-          </button>
-        </div>
-      </section>
-    );
-  }
-  return <EmptyState title="No notices to show" />;
-}
-
 function ReportsPage({ path, dashboard, profile, students }: Parameters<typeof renderPage>[0]) {
-  if (path.endsWith('/export')) return <ExportPanel label="Reports" count={students.length} />;
+  if (path.endsWith('/export')) return <ExportPanel label="Reports" rows={students} />;
   if (path.endsWith('/courses')) return <CourseTable courses={profile?.courses || []} columns={['Course', 'Seats', 'Annual Fee']} />;
   return <AnalyticsPanel stats={dashboard.stats || {}} />;
 }
@@ -987,7 +1477,15 @@ function AssetPanel({
   );
 }
 
-function CourseTable({ courses, columns }: { courses: Array<Record<string, unknown>>; columns: string[] }) {
+function CourseTable({
+  courses,
+  columns,
+  onDelete,
+}: {
+  courses: Array<Record<string, unknown>>;
+  columns: string[];
+  onDelete?: (id: string) => void;
+}) {
   return (
     <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <table className="w-full text-left text-sm">
@@ -997,7 +1495,17 @@ function CourseTable({ courses, columns }: { courses: Array<Record<string, unkno
         <tbody className="divide-y divide-slate-100">
           {courses.map((course, index) => (
             <tr key={String(course.id || course.CollegeCourseID || index)} className={table.row}>
-              {columns.map((column) => <td key={column} className="p-4 text-slate-700">{courseValue(course, column)}</td>)}
+              {columns.map((column) => (
+                <td key={column} className="p-4 text-slate-700">
+                  {column === 'Actions' && onDelete ? (
+                    <button type="button" className="text-red-600 hover:underline" onClick={() => onDelete(String(course.id))}>
+                      Delete
+                    </button>
+                  ) : (
+                    courseValue(course, column)
+                  )}
+                </td>
+              ))}
             </tr>
           ))}
           {!courses.length && (
@@ -1010,18 +1518,22 @@ function CourseTable({ courses, columns }: { courses: Array<Record<string, unkno
 }
 
 function courseValue(course: Record<string, unknown>, column: string) {
+  const fees = course.fees && typeof course.fees === 'object' ? (course.fees as Record<string, unknown>) : {};
   const lookup: Record<string, unknown> = {
     Course: course.courseName || course.CourseName || course.name || '-',
     Branch: course.branchName || course.BranchName || 'General',
+    Degree: course.degree || course.degreeType || '-',
     Department: course.branchName || course.BranchName || 'General',
     Duration: course.duration || course.DurationYears || '-',
     Status: course.isActive === false ? 'Inactive' : 'Active',
-    Seats: course.seats || course.TotalSeats || '-',
-    'Annual Fee': course.fees || course.AnnualFee || '-',
-    Eligibility: course.eligibility || course.EligibilityCriteria || '-',
-    'Seat Availability': course.seats || course.TotalSeats || '-',
+    Seats: course.availableSeats || course.totalSeats || course.seats || course.TotalSeats || '-',
+    'Seat Availability': course.availableSeats || course.totalSeats || course.seats || course.TotalSeats || '-',
+    'Annual Fee': fees.tuitionFee ?? fees.annualFee ?? course.annualFee ?? course.AnnualFee ?? '-',
+    'Total Fee': fees.totalFee ?? '-',
+    Eligibility: course.eligibility || course.Eligibility || course.EligibilityCriteria || '-',
+    Actions: '',
   };
-  return String(lookup[column] || '-');
+  return String(lookup[column] ?? '-');
 }
 
 function QuickActions() {
@@ -1088,13 +1600,109 @@ function ContactQueue({ students }: { students: Array<Record<string, unknown>> }
   return <StudentTable students={students.filter((student) => student.email || student.mobile)} showActions={false} />;
 }
 
-function ExportPanel({ label, count }: { label: string; count: number }) {
+const EXPORT_COLUMNS = [
+  { key: 'name', header: 'Student' },
+  { key: 'email', header: 'Email' },
+  { key: 'mobile', header: 'Mobile' },
+  { key: 'courseName', header: 'Course' },
+  { key: 'branchName', header: 'Branch' },
+  { key: 'status', header: 'Status' },
+  { key: 'appliedDate', header: 'Applied' },
+] as const;
+
+function exportRows(rows: Array<Record<string, unknown>>) {
+  return rows.map((row) =>
+    Object.fromEntries(
+      EXPORT_COLUMNS.map(({ key, header }) => [
+        header,
+        key === 'appliedDate' ? formatDate(String(row[key] || '')) : String(row[key] ?? '-'),
+      ])
+    )
+  );
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function ExportPanel({ label, rows }: { label: string; rows: Array<Record<string, unknown>> }) {
+  const { showToast } = useToast();
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
+  const stamp = () => new Date().toISOString().slice(0, 10);
+  const safeLabel = label.toLowerCase().replace(/\s+/g, '-');
+
+  const exportPdf = () => {
+    if (!rows.length) {
+      showToast('No records available to export', 'error');
+      return;
+    }
+    setExporting('pdf');
+    try {
+      const doc = new jsPDF({ orientation: 'landscape' });
+      doc.setFontSize(14);
+      doc.text(label, 14, 16);
+      doc.setFontSize(10);
+      doc.text(`Exported on ${new Date().toLocaleString('en-IN')}`, 14, 24);
+      autoTable(doc, {
+        startY: 30,
+        head: [EXPORT_COLUMNS.map((column) => column.header)],
+        body: rows.map((row) =>
+          EXPORT_COLUMNS.map(({ key }) =>
+            key === 'appliedDate' ? formatDate(String(row[key] || '')) : String(row[key] ?? '-')
+          )
+        ),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [37, 99, 235] },
+      });
+      doc.save(`${safeLabel}-${stamp()}.pdf`);
+      showToast('PDF exported successfully', 'success');
+    } catch {
+      showToast('Unable to export PDF', 'error');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const exportExcel = () => {
+    if (!rows.length) {
+      showToast('No records available to export', 'error');
+      return;
+    }
+    setExporting('excel');
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(exportRows(rows));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, label.slice(0, 31) || 'Export');
+      const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      downloadBlob(
+        new Blob([buffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }),
+        `${safeLabel}-${stamp()}.xlsx`
+      );
+      showToast('Excel exported successfully', 'success');
+    } catch {
+      showToast('Unable to export Excel', 'error');
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-sm text-slate-600">{count} {label.toLowerCase()} records are ready for export.</p>
+      <p className="text-sm text-slate-600">{rows.length} {label.toLowerCase()} records are ready for export.</p>
       <div className="mt-4 flex flex-wrap gap-3">
-        <button type="button" className={button.secondary}>Export PDF</button>
-        <button type="button" className={button.primary}>Export Excel</button>
+        <button type="button" className={button.secondary} disabled={!!exporting} onClick={exportPdf}>
+          {exporting === 'pdf' ? 'Exporting…' : 'Export PDF'}
+        </button>
+        <button type="button" className={button.primary} disabled={!!exporting} onClick={exportExcel}>
+          {exporting === 'excel' ? 'Exporting…' : 'Export Excel'}
+        </button>
       </div>
     </section>
   );

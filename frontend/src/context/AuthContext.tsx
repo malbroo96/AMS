@@ -15,17 +15,9 @@ interface AuthContextValue {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<UserRole>;
-  register: (data: {
+  register: (data: Record<string, unknown> & {
     name: string;
-    collegeName?: string;
     email: string;
-    phone?: string;
-    address?: string;
-    mobile?: string;
-    gender?: string;
-    dateOfBirth?: string;
-    education?: string;
-    interestedCollege?: string;
     password: string;
     confirmPassword: string;
     role: string;
@@ -86,22 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data.data.user.role;
   };
 
-  const register = async (payload: {
+  const register = async (payload: Record<string, unknown> & {
     name: string;
-    collegeName?: string;
     email: string;
-    phone?: string;
-    address?: string;
-    mobile?: string;
-    gender?: string;
-    dateOfBirth?: string;
-    education?: string;
-    interestedCollege?: string;
     password: string;
     confirmPassword: string;
     role: string;
   }) => {
-    const { data } = await registerApi(payload);
+    const { data } = await registerApi(payload as never);
     persist(data.data.user, data.data.token);
     return data.data.user.role;
   };

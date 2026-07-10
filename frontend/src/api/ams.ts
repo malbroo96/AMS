@@ -27,19 +27,41 @@ export interface CollegeProfileData {
   status: string;
   logoUrl?: string | null;
   coverBannerUrl?: string | null;
+  bannerUrl?: string | null;
   prospectusUrl?: string | null;
+  rating?: number | null;
+  reviewCount?: number;
   location?: {
     country?: string;
     state?: string;
+    district?: string;
     city?: string;
     pincode?: string;
     fullAddress?: string;
+    address?: string;
+    googleMapsUrl?: string;
+    googleMapUrl?: string;
   };
   contact?: {
     emailAddress?: string;
     admissionMobileNumber?: string;
     officeMobileNumber?: string;
     websiteUrl?: string;
+    principalName?: string;
+    admissionOfficer?: string;
+    admissionEmail?: string;
+    admissionPhone?: string;
+    whatsAppNumber?: string;
+    phone?: string;
+  };
+  contacts?: {
+    principalName?: string;
+    admissionOfficer?: string;
+    admissionEmail?: string;
+    admissionPhone?: string;
+    whatsAppNumber?: string;
+    officePhone?: string;
+    landlineNumber?: string;
   };
   placements?: {
     placementPercentage?: number | null;
@@ -51,6 +73,8 @@ export interface CollegeProfileData {
     summaryDescription?: string;
     visionStatement?: string;
     missionStatement?: string;
+    vision?: string;
+    mission?: string;
     principalMessage?: string;
   };
   courses?: Array<Record<string, unknown>>;
@@ -59,6 +83,10 @@ export interface CollegeProfileData {
   gallery?: Array<Record<string, unknown>>;
   enquiries?: Array<Record<string, unknown>>;
   facilities?: string[];
+  accreditations?: Array<Record<string, unknown>>;
+  documents?: Array<Record<string, unknown>>;
+  socialLinks?: Record<string, string>;
+  notices?: Array<Record<string, unknown>>;
   dashboard?: {
     totalStudentViews?: number;
     totalEnquiries?: number;
@@ -123,6 +151,18 @@ export const submitCollegeProfileEnquiry = (collegeId: string, data: Record<stri
 
 export const updateCollegeEnquiry = (enquiryId: string, data: Record<string, unknown>) =>
   api.put(`/ams/college/profile/enquiries/${enquiryId}`, data);
+
+export const listCollegeNotices = (params?: { status?: string }) =>
+  api.get<{ success: boolean; data: Array<Record<string, unknown>> }>('/ams/college/notices', { params });
+
+export const createCollegeNotice = (data: Record<string, unknown>) =>
+  api.post('/ams/college/notices', data);
+
+export const updateCollegeNotice = (noticeId: string, data: Record<string, unknown>) =>
+  api.put(`/ams/college/notices/${noticeId}`, data);
+
+export const deleteCollegeNotice = (noticeId: string) =>
+  api.delete(`/ams/college/notices/${noticeId}`);
 
 export interface CollegeAssets {
   collegeId: string;

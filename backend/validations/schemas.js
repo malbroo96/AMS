@@ -3,6 +3,7 @@ const Joi = require('joi');
 const registerSchema = Joi.object({
   name: Joi.string().min(2).max(100).required(),
   collegeName: Joi.string().min(2).max(150),
+  collegeAddress: Joi.string().allow('', null),
   address: Joi.string().allow('', null),
   mobile: Joi.string().min(10).max(15),
   email: Joi.string().email({ tlds: { allow: false } }).required(),
@@ -16,7 +17,22 @@ const registerSchema = Joi.object({
   password: Joi.string().min(6).max(128).required(),
   confirmPassword: Joi.string().valid(Joi.ref('password')).required(),
   role: Joi.string().valid('student', 'college').default('student'),
-});
+  // Full college registration payload (optional nested sections)
+  basic: Joi.object().unknown(true),
+  branding: Joi.object().unknown(true),
+  location: Joi.object().unknown(true),
+  contacts: Joi.object().unknown(true),
+  contact: Joi.object().unknown(true),
+  courses: Joi.array().items(Joi.object().unknown(true)),
+  facilities: Joi.array(),
+  placements: Joi.object().unknown(true),
+  accreditations: Joi.array().items(Joi.object().unknown(true)),
+  documents: Joi.array().items(Joi.object().unknown(true)),
+  social: Joi.object().unknown(true),
+  socialLinks: Joi.object().unknown(true),
+  gallery: Joi.array(),
+  campusImages: Joi.array(),
+}).unknown(true);
 
 const loginSchema = Joi.object({
   email: Joi.string().required(),

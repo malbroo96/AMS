@@ -27,8 +27,21 @@ async function removePartialRegistration(userId) {
       .query('SELECT CollegeID FROM dbo.Colleges WHERE UserID = @userId');
     const collegeId = collegeResult.recordset[0]?.CollegeID;
     if (collegeId) {
-      await new sql.Request(transaction).input('collegeId', sql.Int, collegeId)
-        .query('DELETE FROM dbo.CollegeProfiles WHERE CollegeID = @collegeId; DELETE FROM dbo.Colleges WHERE CollegeID = @collegeId;');
+      await new sql.Request(transaction).input('collegeId', sql.Int, collegeId).query(`
+        DELETE FROM dbo.CollegeFees WHERE CollegeCourseID IN (SELECT CollegeCourseID FROM dbo.CollegeCourses WHERE CollegeID = @collegeId);
+        DELETE FROM dbo.CollegeCourses WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.CollegeContacts WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.CollegeFacilities WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.CollegePlacements WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.CollegeRecruiters WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.CollegeAccreditations WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.CollegeDocuments WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.CollegeSocialLinks WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.CollegeNotices WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.CollegeMedia WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.CollegeProfiles WHERE CollegeID = @collegeId;
+        DELETE FROM dbo.Colleges WHERE CollegeID = @collegeId;
+      `);
     }
 
     await new sql.Request(transaction).input('userId', sql.Int, userId)
@@ -87,13 +100,60 @@ const authService = {
       }
 
       if (requestedRole === 'college') {
-        const collegeName = payload.collegeName || name;
+        const collegeName = payload.collegeName || payload.basic?.collegeName || name;
         user.college = await SchoolModel.create({
           schoolName: collegeName,
           email: normalizedEmail,
           adminId: user.id,
           status: 'pending'
         });
+
+        const hasFullPayload =
+          payload.basic ||
+          payload.courses ||
+          payload.facilities ||
+          payload.accreditations ||
+          payload.placements ||
+          payload.contacts ||
+          payload.address ||
+          payload.location;
+
+        if (hasFullPayload || payload.collegeAddress) {
+          const collegeRegistration = require('./collegeRegistration.service');
+          await collegeRegistration.saveFullRegistration(user.college.id, {
+            basic: {
+              collegeName,
+              collegeType: payload.basic?.collegeType || payload.collegeType,
+              universityAffiliation: payload.basic?.universityAffiliation || payload.universityAffiliation,
+              establishmentYear: payload.basic?.establishmentYear || payload.establishmentYear,
+              description: payload.basic?.description || payload.description,
+              vision: payload.basic?.vision || payload.vision,
+              mission: payload.basic?.mission || payload.mission,
+              website: payload.basic?.website || payload.website,
+              email: normalizedEmail,
+              phone: phone || payload.basic?.phone,
+              ...(payload.basic || {}),
+            },
+            branding: payload.branding || {},
+            address: payload.address || payload.location || {
+              address: payload.collegeAddress || payload.address,
+              city: payload.city,
+              state: payload.state,
+              district: payload.district,
+              country: payload.country,
+              pincode: payload.pincode,
+              googleMapUrl: payload.googleMapUrl,
+            },
+            contacts: payload.contacts || payload.contact || {},
+            courses: payload.courses || [],
+            facilities: payload.facilities || [],
+            placements: payload.placements || {},
+            accreditations: payload.accreditations || [],
+            documents: payload.documents || [],
+            social: payload.social || payload.socialLinks || {},
+            gallery: payload.gallery || payload.campusImages || payload.branding?.campusImages || [],
+          });
+        }
       }
     } catch (error) {
       if (user?.id) {

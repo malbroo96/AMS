@@ -164,8 +164,48 @@ async function deleteFile(fileId) {
   return { success: true };
 }
 
+async function uploadCollegeGalleryImage({ collegeId, file, itemId, uploadedBy }) {
+  if (!file?.buffer) throw new ApiError('Gallery image file is required', 400);
+  const root = getConfiguredRootFolder();
+  const folderPath = `${root}/${collegeId}/gallery`;
+  const uploaded = await uploadFile({
+    buffer: file.buffer,
+    originalName: file.originalname || `gallery-${itemId || Date.now()}.jpg`,
+    mimeType: file.mimetype || 'image/jpeg',
+    folderPath,
+    entityType: 'college_gallery',
+    entityId: collegeId,
+    uploadedBy: uploadedBy || null,
+  });
+  return {
+    ...uploaded,
+    url: `/api/files/${uploaded.fileId}`,
+  };
+}
+
+async function uploadCollegeDocument({ collegeId, file, documentType, uploadedBy }) {
+  if (!file?.buffer) throw new ApiError('Document file is required', 400);
+  const root = getConfiguredRootFolder();
+  const folderPath = `${root}/${collegeId}/documents`;
+  const uploaded = await uploadFile({
+    buffer: file.buffer,
+    originalName: file.originalname || `${documentType || 'document'}-${Date.now()}.pdf`,
+    mimeType: file.mimetype || 'application/pdf',
+    folderPath,
+    entityType: 'college_document',
+    entityId: collegeId,
+    uploadedBy: uploadedBy || null,
+  });
+  return {
+    ...uploaded,
+    url: `/api/files/${uploaded.fileId}`,
+  };
+}
+
 module.exports = {
   uploadFile,
+  uploadCollegeGalleryImage,
+  uploadCollegeDocument,
   getFileMetadata,
   getFileStream,
   deleteFile,

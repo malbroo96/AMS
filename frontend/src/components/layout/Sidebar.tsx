@@ -47,12 +47,15 @@ const collegeNavGroups: NavGroup[] = [
     icon: 'P',
     items: [
       { to: '/dashboard/college/profile/basic', label: 'Basic Information' },
-      { to: '/dashboard/college/profile/contact', label: 'Contact Details' },
+      { to: '/dashboard/college/profile/branding', label: 'Branding' },
       { to: '/dashboard/college/profile/address', label: 'Address' },
-      { to: '/dashboard/college/profile/assets', label: 'Assets' },
+      { to: '/dashboard/college/profile/contact', label: 'Contacts' },
       { to: '/dashboard/college/profile/facilities', label: 'Facilities' },
-      { to: '/dashboard/college/profile/admission', label: 'Admission Information' },
+      { to: '/dashboard/college/profile/accreditations', label: 'Accreditations' },
       { to: '/dashboard/college/profile/documents', label: 'Documents' },
+      { to: '/dashboard/college/profile/gallery', label: 'Gallery' },
+      { to: '/dashboard/college/profile/placements', label: 'Placements' },
+      { to: '/dashboard/college/profile/social', label: 'Social Media' },
     ],
   },
   {
@@ -60,7 +63,8 @@ const collegeNavGroups: NavGroup[] = [
     icon: 'C',
     items: [
       { to: '/dashboard/college/courses', label: 'Course Management' },
-      { to: '/dashboard/college/courses/departments', label: 'Departments' },
+      { to: '/dashboard/college/courses/add', label: 'Add Course' },
+      { to: '/dashboard/college/courses/fees', label: 'Manage Fees' },
       { to: '/dashboard/college/courses/intake-fees', label: 'Intake & Fees' },
       { to: '/dashboard/college/courses/eligibility', label: 'Eligibility' },
       { to: '/dashboard/college/courses/seats', label: 'Seat Availability' },

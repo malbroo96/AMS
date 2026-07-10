@@ -85,6 +85,22 @@ exports.updateCollegeEnquiry = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await amsService.updateCollegeEnquiry(req.user, req.params.enquiryId, req.body) });
 });
 
+exports.listCollegeNotices = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await amsService.listCollegeNotices(req.user, req.query) });
+});
+
+exports.createCollegeNotice = asyncHandler(async (req, res) => {
+  res.status(201).json({ success: true, data: await amsService.saveCollegeNotice(req.user, null, req.body) });
+});
+
+exports.updateCollegeNotice = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await amsService.saveCollegeNotice(req.user, req.params.noticeId, req.body) });
+});
+
+exports.deleteCollegeNotice = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await amsService.deleteCollegeNotice(req.user, req.params.noticeId) });
+});
+
 exports.adminDashboard = asyncHandler(async (_req, res) => {
   res.json({ success: true, data: await amsService.adminDashboard() });
 });

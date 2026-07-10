@@ -374,6 +374,18 @@ const amsSqlService = {
     return collegePortal.updateEnquiry(user, enquiryId, data);
   },
 
+  async listCollegeNotices(user, query) {
+    return collegePortal.listNotices(user, query);
+  },
+
+  async saveCollegeNotice(user, noticeId, data) {
+    return collegePortal.saveNotice(user, noticeId, data);
+  },
+
+  async deleteCollegeNotice(user, noticeId) {
+    return collegePortal.deleteNotice(user, noticeId);
+  },
+
   async getCollegeDashboard(user) {
     const pool = await getPool();
     const col = await pool

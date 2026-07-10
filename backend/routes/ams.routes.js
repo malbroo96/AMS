@@ -41,6 +41,10 @@ router.put(
 );
 router.delete('/college/profile/gallery/:imageId', authMiddleware, roleMiddleware('college'), amsController.deleteCollegeGalleryImage);
 router.put('/college/profile/enquiries/:enquiryId', authMiddleware, roleMiddleware('college'), amsController.updateCollegeEnquiry);
+router.get('/college/notices', authMiddleware, roleMiddleware('college'), amsController.listCollegeNotices);
+router.post('/college/notices', authMiddleware, roleMiddleware('college'), amsController.createCollegeNotice);
+router.put('/college/notices/:noticeId', authMiddleware, roleMiddleware('college'), amsController.updateCollegeNotice);
+router.delete('/college/notices/:noticeId', authMiddleware, roleMiddleware('college'), amsController.deleteCollegeNotice);
 
 router.get('/admin/dashboard', authMiddleware, roleMiddleware('admin'), amsController.adminDashboard);
 router.get('/admin/students', authMiddleware, roleMiddleware('admin'), amsController.adminStudents);
