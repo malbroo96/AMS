@@ -22,17 +22,7 @@ router.post(
   collegeController.uploadBanner
 );
 
-router.put(
-  '/update-logo',
-  authMiddleware,
-  roleMiddleware('admin', 'college'),
-  collegeAssetUploadMiddleware.single('file'),
-  collegeController.updateLogo
-);
-
 router.delete('/delete-logo/:collegeId', authMiddleware, roleMiddleware('admin', 'college'), collegeController.deleteLogo);
 router.get('/assets/:collegeId', authMiddleware, roleMiddleware('admin', 'college'), collegeController.getAssets);
-router.get('/my-assets', authMiddleware, roleMiddleware('college'), collegeController.getAssets);
-router.get('/logo/:collegeId', collegeController.getLogo);
 
 module.exports = router;

@@ -135,14 +135,6 @@ const collegeAssetService = {
     return { success: true };
   },
 
-  async getLogo({ collegeId: rawCollegeId }) {
-    const collegeId = parseInt(String(rawCollegeId), 10);
-    if (!Number.isFinite(collegeId)) throw new ApiError('Invalid college ID', 400);
-    const pool = await getPool();
-    const res = await pool.request().input('cid', sql.Int, collegeId).query('SELECT LogoUrl FROM dbo.CollegeProfiles WHERE CollegeID = @cid');
-    return { logoUrl: res.recordset[0]?.LogoUrl || null };
-  },
-
   async getAssets({ user, collegeId: rawCollegeId }) {
     const collegeId = await resolveCollegeId(user, rawCollegeId);
     const pool = await getPool();

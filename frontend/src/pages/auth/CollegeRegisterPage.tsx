@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useState, type ChangeEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logoNav from '../../assets/logo.png';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
@@ -12,7 +12,6 @@ import {
   uploadCollegeLogo,
 } from '../../api/ams';
 import api from '../../api/axios';
-import type { UserRole } from '../../types';
 
 const STEPS = [
   'Account',
@@ -59,6 +58,32 @@ const DOCUMENT_TYPES = [
   'Academic Calendar',
   'Other Documents',
 ] as const;
+
+const COURSE_FIELDS = [
+  ['courseName', 'Course Name'],
+  ['degree', 'Degree'],
+  ['branch', 'Branch'],
+  ['duration', 'Duration (years)'],
+  ['intake', 'Intake'],
+  ['availableSeats', 'Available Seats'],
+  ['tuitionFee', 'Tuition Fee'],
+  ['hostelFee', 'Hostel Fee'],
+  ['transportFee', 'Transport Fee'],
+  ['examFee', 'Exam Fee'],
+  ['miscellaneousFee', 'Miscellaneous Fee'],
+] as const;
+
+const SOCIAL_PLATFORMS = [
+  ['facebook', 'Facebook'],
+  ['instagram', 'Instagram'],
+  ['linkedin', 'LinkedIn'],
+  ['twitter', 'Twitter / X'],
+  ['youtube', 'YouTube'],
+] as const;
+
+const PAGE_WIDTH = 'mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8';
+const FIELD_GRID = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3';
+const inputClass = `w-full ${form.input}`;
 
 type CourseDraft = {
   courseName: string;
@@ -130,16 +155,39 @@ function totalFee(course: CourseDraft) {
   );
 }
 
-async function uploadGenericFile(file: File, subfolder: string) {
+function registrationErrorMessage(err: unknown) {
+  return (
+    (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+    ((err as { request?: unknown })?.request
+      ? 'Cannot connect to the server. Please start the backend API and try again.'
+      : '') ||
+    (err as Error)?.message ||
+    'College registration failed'
+  );
+}
+
+async function uploadGenericFile(file: File, folder: string) {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('folder', subfolder);
-  const { data } = await api.post<{ success: boolean; data: { url?: string; fileUrl?: string; fileId?: string } }>('/upload', formData);
+  formData.append('folder', folder);
+  const { data } = await api.post<{ success: boolean; data: { url?: string; fileUrl?: string; fileId?: string } }>(
+    '/upload',
+    formData
+  );
   const payload = data.data || {};
   if (payload.url) return payload.url;
   if (payload.fileUrl) return payload.fileUrl;
   if (payload.fileId) return `/api/files/${payload.fileId}`;
   throw new Error('Upload did not return a file URL');
+}
+
+function Field({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {
+  return (
+    <label className={`block space-y-1.5 ${className}`}>
+      <span className={form.label}>{label}</span>
+      {children}
+    </label>
+  );
 }
 
 export function CollegeRegisterPage() {
@@ -216,7 +264,7 @@ export function CollegeRegisterPage() {
     youtube: '',
   });
 
-  const progress = useMemo(() => Math.round(((step + 1) / STEPS.length) * 100), [step]);
+  const progress = Math.round(((step + 1) / STEPS.length) * 100);
 
   const validateStep = () => {
     if (step === 0) {
@@ -232,10 +280,7 @@ export function CollegeRegisterPage() {
     if (step === 3) {
       if (!address.address.trim() || !address.city.trim() || !address.state.trim()) return 'Address, city, and state are required';
     }
-    if (step === 5) {
-      const valid = courses.some((c) => c.courseName.trim());
-      if (!valid) return 'Add at least one course';
-    }
+    if (step === 5 && !courses.some((c) => c.courseName.trim())) return 'Add at least one course';
     return null;
   };
 
@@ -258,6 +303,14 @@ export function CollegeRegisterPage() {
   const onBannerChange = (file: File | null) => {
     setBannerFile(file);
     setBannerPreview(file ? URL.createObjectURL(file) : null);
+  };
+
+  const patchCourse = (index: number, patch: Partial<CourseDraft>) => {
+    setCourses((prev) => prev.map((course, i) => (i === index ? { ...course, ...patch } : course)));
+  };
+
+  const patchAccreditation = (index: number, patch: Partial<AccreditationDraft>) => {
+    setAccreditations((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   };
 
   const onSubmit = async () => {
@@ -338,9 +391,8 @@ export function CollegeRegisterPage() {
         social,
         documents: [],
         gallery: [],
-      } as Parameters<typeof registerUser>[0] & Record<string, unknown>);
+      });
 
-      // Upload branding / gallery / documents with authenticated session
       if (logoFile) await uploadCollegeLogo(logoFile);
       if (bannerFile) await uploadCollegeBanner(bannerFile);
 
@@ -348,27 +400,28 @@ export function CollegeRegisterPage() {
         await createCollegeGalleryImage({ imageTitle: file.name }, file);
       }
 
-      const uploadedDocs: Array<{ documentType: string; documentName: string; fileUrl: string }> = [];
+      const uploadedDocs = [];
       for (const doc of documents) {
         if (!doc.file) continue;
-        const url = await uploadGenericFile(doc.file, 'college-documents');
-        uploadedDocs.push({ documentType: doc.documentType, documentName: doc.file.name, fileUrl: url });
+        const fileUrl = await uploadGenericFile(doc.file, 'college-documents');
+        uploadedDocs.push({
+          documentType: doc.documentType,
+          documentName: doc.file.name,
+          fileUrl,
+        });
       }
 
       const uploadedAccreditations = [];
-      for (let i = 0; i < accreditations.length; i++) {
-        const item = accreditations[i];
-        let certificateUrl: string | null = null;
-        if (item.certificateFile) {
-          certificateUrl = await uploadGenericFile(item.certificateFile, 'college-accreditations');
-        }
+      for (const item of accreditations) {
         if (!item.accreditationName.trim()) continue;
         uploadedAccreditations.push({
           accreditationName: item.accreditationName,
           gradeOrScore: item.gradeOrScore,
           certificateNumber: item.certificateNumber,
           validTill: item.validTill || null,
-          certificateUrl,
+          certificateUrl: item.certificateFile
+            ? await uploadGenericFile(item.certificateFile, 'college-accreditations')
+            : null,
         });
       }
 
@@ -380,16 +433,9 @@ export function CollegeRegisterPage() {
       }
 
       showToast('College registration successful', 'success');
-      navigate(getRoleRedirect('college' as UserRole));
+      navigate(getRoleRedirect('college'));
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        ((err as { request?: unknown })?.request
-          ? 'Cannot connect to the server. Please start the backend API and try again.'
-          : '') ||
-        (err as Error)?.message ||
-        'College registration failed';
-      showToast(msg, 'error');
+      showToast(registrationErrorMessage(err), 'error');
     } finally {
       setLoading(false);
     }
@@ -398,7 +444,7 @@ export function CollegeRegisterPage() {
   return (
     <div className="flex h-dvh min-h-screen flex-col bg-slate-50 font-sans text-slate-900">
       <header className="shrink-0 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        <div className={`${PAGE_WIDTH} flex items-center justify-between gap-4 py-3`}>
           <Link to="/" className="flex items-center gap-3">
             <img src={logoNav} alt="E-Admit Portal" className="h-10 w-auto" />
             <span className="font-sans text-lg font-bold text-slate-900">E-Admit Portal</span>
@@ -411,7 +457,7 @@ export function CollegeRegisterPage() {
       </header>
 
       <div className="shrink-0 border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 lg:px-8">
+        <div className={`${PAGE_WIDTH} py-4`}>
           <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
             <span>
               Step {step + 1} of {STEPS.length}: {STEPS[step]}
@@ -440,9 +486,9 @@ export function CollegeRegisterPage() {
       </div>
 
       <main className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <div className={`${PAGE_WIDTH} py-6 lg:py-8`}>
           {step === 0 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={FIELD_GRID}>
               <Field label="Contact Person">
                 <input className={inputClass} value={account.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} />
               </Field>
@@ -477,7 +523,7 @@ export function CollegeRegisterPage() {
           )}
 
           {step === 1 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={FIELD_GRID}>
               <Field label="College Name">
                 <input className={inputClass} value={basic.collegeName} onChange={(e) => setBasic({ ...basic, collegeName: e.target.value })} />
               </Field>
@@ -518,7 +564,7 @@ export function CollegeRegisterPage() {
           )}
 
           {step === 2 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={FIELD_GRID}>
               <Field label="College Logo">
                 <input type="file" accept="image/*" onChange={(e) => onLogoChange(e.target.files?.[0] || null)} />
                 {logoPreview && <img src={logoPreview} alt="Logo preview" className="mt-2 h-20 w-20 rounded-lg object-cover" />}
@@ -540,7 +586,7 @@ export function CollegeRegisterPage() {
           )}
 
           {step === 3 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={FIELD_GRID}>
               <Field label="Address" className="sm:col-span-2 lg:col-span-3">
                 <textarea className={inputClass} rows={2} value={address.address} onChange={(e) => setAddress({ ...address, address: e.target.value })} />
               </Field>
@@ -566,7 +612,7 @@ export function CollegeRegisterPage() {
           )}
 
           {step === 4 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={FIELD_GRID}>
               <Field label="Principal Name">
                 <input className={inputClass} value={contacts.principalName} onChange={(e) => setContacts({ ...contacts, principalName: e.target.value })} />
               </Field>
@@ -598,30 +644,12 @@ export function CollegeRegisterPage() {
                     )}
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {(
-                      [
-                        ['courseName', 'Course Name'],
-                        ['degree', 'Degree'],
-                        ['branch', 'Branch'],
-                        ['duration', 'Duration (years)'],
-                        ['intake', 'Intake'],
-                        ['availableSeats', 'Available Seats'],
-                        ['tuitionFee', 'Tuition Fee'],
-                        ['hostelFee', 'Hostel Fee'],
-                        ['transportFee', 'Transport Fee'],
-                        ['examFee', 'Exam Fee'],
-                        ['miscellaneousFee', 'Miscellaneous Fee'],
-                      ] as const
-                    ).map(([key, label]) => (
+                    {COURSE_FIELDS.map(([key, label]) => (
                       <Field key={key} label={label}>
                         <input
                           className={inputClass}
                           value={course[key]}
-                          onChange={(e) => {
-                            const nextCourses = [...courses];
-                            nextCourses[index] = { ...course, [key]: e.target.value };
-                            setCourses(nextCourses);
-                          }}
+                          onChange={(e) => patchCourse(index, { [key]: e.target.value })}
                         />
                       </Field>
                     ))}
@@ -629,11 +657,7 @@ export function CollegeRegisterPage() {
                       <input
                         className={inputClass}
                         value={course.scholarshipInfo}
-                        onChange={(e) => {
-                          const nextCourses = [...courses];
-                          nextCourses[index] = { ...course, scholarshipInfo: e.target.value };
-                          setCourses(nextCourses);
-                        }}
+                        onChange={(e) => patchCourse(index, { scholarshipInfo: e.target.value })}
                       />
                     </Field>
                     <Field label="Eligibility" className="sm:col-span-2 lg:col-span-3">
@@ -641,11 +665,7 @@ export function CollegeRegisterPage() {
                         className={inputClass}
                         rows={2}
                         value={course.eligibility}
-                        onChange={(e) => {
-                          const nextCourses = [...courses];
-                          nextCourses[index] = { ...course, eligibility: e.target.value };
-                          setCourses(nextCourses);
-                        }}
+                        onChange={(e) => patchCourse(index, { eligibility: e.target.value })}
                       />
                     </Field>
                     <Field label="Description" className="sm:col-span-2 lg:col-span-3">
@@ -653,11 +673,7 @@ export function CollegeRegisterPage() {
                         className={inputClass}
                         rows={2}
                         value={course.description}
-                        onChange={(e) => {
-                          const nextCourses = [...courses];
-                          nextCourses[index] = { ...course, description: e.target.value };
-                          setCourses(nextCourses);
-                        }}
+                        onChange={(e) => patchCourse(index, { description: e.target.value })}
                       />
                     </Field>
                   </div>
@@ -698,7 +714,7 @@ export function CollegeRegisterPage() {
           )}
 
           {step === 7 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={FIELD_GRID}>
               <Field label="Highest Package">
                 <input className={inputClass} value={placements.highestPackage} onChange={(e) => setPlacements({ ...placements, highestPackage: e.target.value })} />
               </Field>
@@ -731,11 +747,7 @@ export function CollegeRegisterPage() {
                       <select
                         className={inputClass}
                         value={item.accreditationName}
-                        onChange={(e) => {
-                          const next = [...accreditations];
-                          next[index] = { ...item, accreditationName: e.target.value };
-                          setAccreditations(next);
-                        }}
+                        onChange={(e) => patchAccreditation(index, { accreditationName: e.target.value })}
                       >
                         {ACCREDITATION_OPTIONS.map((opt) => (
                           <option key={opt}>{opt}</option>
@@ -746,22 +758,14 @@ export function CollegeRegisterPage() {
                       <input
                         className={inputClass}
                         value={item.gradeOrScore}
-                        onChange={(e) => {
-                          const next = [...accreditations];
-                          next[index] = { ...item, gradeOrScore: e.target.value };
-                          setAccreditations(next);
-                        }}
+                        onChange={(e) => patchAccreditation(index, { gradeOrScore: e.target.value })}
                       />
                     </Field>
                     <Field label="Certificate Number">
                       <input
                         className={inputClass}
                         value={item.certificateNumber}
-                        onChange={(e) => {
-                          const next = [...accreditations];
-                          next[index] = { ...item, certificateNumber: e.target.value };
-                          setAccreditations(next);
-                        }}
+                        onChange={(e) => patchAccreditation(index, { certificateNumber: e.target.value })}
                       />
                     </Field>
                     <Field label="Valid Till">
@@ -769,22 +773,14 @@ export function CollegeRegisterPage() {
                         type="date"
                         className={inputClass}
                         value={item.validTill}
-                        onChange={(e) => {
-                          const next = [...accreditations];
-                          next[index] = { ...item, validTill: e.target.value };
-                          setAccreditations(next);
-                        }}
+                        onChange={(e) => patchAccreditation(index, { validTill: e.target.value })}
                       />
                     </Field>
                     <Field label="Certificate PDF" className="sm:col-span-2 lg:col-span-2">
                       <input
                         type="file"
                         accept="application/pdf,image/*"
-                        onChange={(e) => {
-                          const next = [...accreditations];
-                          next[index] = { ...item, certificateFile: e.target.files?.[0] || null };
-                          setAccreditations(next);
-                        }}
+                        onChange={(e) => patchAccreditation(index, { certificateFile: e.target.files?.[0] || null })}
                       />
                     </Field>
                   </div>
@@ -797,7 +793,7 @@ export function CollegeRegisterPage() {
           )}
 
           {step === 9 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={FIELD_GRID}>
               {documents.map((doc, index) => (
                 <Field key={doc.documentType} label={doc.documentType}>
                   <input
@@ -816,9 +812,9 @@ export function CollegeRegisterPage() {
           )}
 
           {step === 10 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(['facebook', 'instagram', 'linkedin', 'twitter', 'youtube'] as const).map((platform) => (
-                <Field key={platform} label={platform === 'twitter' ? 'Twitter / X' : platform[0].toUpperCase() + platform.slice(1)}>
+            <div className={FIELD_GRID}>
+              {SOCIAL_PLATFORMS.map(([platform, label]) => (
+                <Field key={platform} label={label}>
                   <input className={inputClass} value={social[platform]} onChange={(e) => setSocial({ ...social, [platform]: e.target.value })} />
                 </Field>
               ))}
@@ -828,7 +824,7 @@ export function CollegeRegisterPage() {
       </main>
 
       <footer className="sticky bottom-0 z-20 shrink-0 border-t border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div className={`${PAGE_WIDTH} flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between`}>
           <p className="text-sm text-slate-600">
             Already registered?{' '}
             <Link to="/login" className="font-semibold text-blue-600 hover:underline">
@@ -845,7 +841,7 @@ export function CollegeRegisterPage() {
               </button>
             ) : (
               <button type="button" onClick={() => void onSubmit()} disabled={loading} className={`inline-flex items-center gap-2 ${button.primary}`}>
-                {loading && <LoadingSpinner size="sm" />}
+                {loading && <LoadingSpinner className="size-4" />}
                 Submit Registration
               </button>
             )}
@@ -855,14 +851,3 @@ export function CollegeRegisterPage() {
     </div>
   );
 }
-
-function Field({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {
-  return (
-    <label className={`block space-y-1.5 ${className}`}>
-      <span className={form.label}>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-const inputClass = `w-full ${form.input}`;

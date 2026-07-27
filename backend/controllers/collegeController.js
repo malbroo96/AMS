@@ -1,15 +1,11 @@
 const asyncHandler = require('../utils/asyncHandler');
 const collegeAssetService = require('../services/collegeAsset.service');
 
-function uploadedFile(req) {
-  return req.file;
-}
-
 exports.uploadLogo = asyncHandler(async (req, res) => {
   const result = await collegeAssetService.uploadAsset({
     user: req.user,
     collegeId: req.body.collegeId,
-    file: uploadedFile(req),
+    file: req.file,
     assetType: 'logo',
   });
 
@@ -20,22 +16,11 @@ exports.uploadBanner = asyncHandler(async (req, res) => {
   const result = await collegeAssetService.uploadAsset({
     user: req.user,
     collegeId: req.body.collegeId,
-    file: uploadedFile(req),
+    file: req.file,
     assetType: 'banner',
   });
 
   res.status(201).json({ success: true, data: result });
-});
-
-exports.updateLogo = asyncHandler(async (req, res) => {
-  const result = await collegeAssetService.uploadAsset({
-    user: req.user,
-    collegeId: req.body.collegeId,
-    file: uploadedFile(req),
-    assetType: 'logo',
-  });
-
-  res.json({ success: true, data: result });
 });
 
 exports.deleteLogo = asyncHandler(async (req, res) => {
@@ -45,11 +30,6 @@ exports.deleteLogo = asyncHandler(async (req, res) => {
     assetType: 'logo',
   });
 
-  res.json({ success: true, data: result });
-});
-
-exports.getLogo = asyncHandler(async (req, res) => {
-  const result = await collegeAssetService.getLogo({ collegeId: req.params.collegeId });
   res.json({ success: true, data: result });
 });
 
